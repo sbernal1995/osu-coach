@@ -257,7 +257,7 @@ def physical_reference(profile):
     comfortable = [p for p in window if p.get("passed") and number(p.get("accuracy")) >= get_setting('challenge_accuracy')][-5:]
     ref = comfortable or window[-5:]
     result = {}
-    for field in ("bpm", "ar", "length"):
+    for field in ("bpm", "ar"):
         values = [number(p.get(field)) for p in ref if number(p.get(field)) > 0]
         result[field] = mean(values) if values else None
     return result
@@ -265,9 +265,10 @@ def physical_reference(profile):
 
 def physical_limits(profile):
     anchors = physical_reference(profile)
-    return {field: anchors[field] * factor + extra if anchors[field] else None
-            for field, (extra, factor) in {"bpm": (get_setting('bpm_margin'), 1), "ar": (get_setting('ar_margin'), 1),
-                                         "length": (get_setting('length_extra_seconds'), get_setting('length_multiplier'))}.items()}
+    # Duration is not a proxy for skill difficulty and must not close the pool
+    # around the short maps already recommended to the player.
+    return {field: anchors[field] + margin if anchors[field] else None
+            for field, margin in {"bpm": get_setting('bpm_margin'), "ar": get_setting('ar_margin')}.items()}
 
 
 def recommend(catalog, profile, limit=3, tag_analysis=None, player_profile=None, stages=None, *, fill_online=False):
@@ -314,16 +315,18 @@ def recommend(catalog, profile, limit=3, tag_analysis=None, player_profile=None,
             if (m.get("mode", 0) != 0 or key in used or song in used_songs or sr <= 0
                     or not max(.1, target - get_setting('star_tolerance_below')) - 1e-9 <= sr <= target + get_setting('star_tolerance_above') + 1e-9):
                 continue
-            # Keep simultaneous jumps in reading, speed and length bounded.
+            # Keep simultaneous jumps in reading and speed bounded.
             if any(ceiling is not None and number(m.get(field)) > ceiling for field, ceiling in limits.items()):
                 continue
             penalty = abs(sr - target) * 5 + (.5 if key in recent_keys else 0)
             bpm = reference("bpm")
             if bpm:
                 penalty += abs(number(m.get("bpm")) - bpm) / 150
-            # Short maps are a useful neutral calibration default.
-            if not window:
-                penalty += max(0, number(m.get("length")) - 150) / 120
+            # A bounded preference helps keep warmups brief without excluding
+            # longer maps or influencing practice and consolidation difficulty.
+            warmup_seconds = get_setting("warmup_preferred_seconds")
+            if stage == "warmup" and warmup_seconds:
+                penalty += min(.2, max(0, number(m.get("length")) - warmup_seconds) / warmup_seconds * .2)
             if tag_analysis:
                 from osu_coach.core.tag_analysis import tag_priority
                 adjustment, _ = tag_priority(m, tag_analysis, effective_stage)

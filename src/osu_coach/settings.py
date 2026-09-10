@@ -38,8 +38,7 @@ SCHEMA = [
     field("star_tolerance_above", "Margen por encima del objetivo (estrellas)", .18, .01, 2.0, .01, "Dificultad y progresión", "Límite superior de dificultad, también aplicado a las búsquedas online."),
     field("bpm_margin", "Aumento máximo de BPM", 15.0, 0.0, 100.0, 1, "Dificultad y progresión", "Incremento sobre la velocidad de tus mapas recientes de referencia."),
     field("ar_margin", "Aumento máximo de AR", .7, 0.0, 3.0, .1, "Dificultad y progresión", "Limita el salto en la rapidez de lectura exigida."),
-    field("length_multiplier", "Factor máximo de duración", 1.2, 1.0, 3.0, .1, "Dificultad y progresión", "La duración reciente se multiplica por este factor y se suma el margen en segundos."),
-    field("length_extra_seconds", "Margen adicional de duración (segundos)", 20, 0, 300, 5, "Dificultad y progresión", "Tiempo extra permitido después de aplicar el factor de duración."),
+    field("warmup_preferred_seconds", "Duración preferida para entrar en ritmo (segundos)", 150, 0, 900, 15, "Dificultad y progresión", "Prioridad suave para mapas de hasta esta duración al calentar; los más largos también pueden aparecer. No limita la búsqueda ni afecta las otras etapas. 0 desactiva la preferencia."),
     field("challenge_maps", "Partidas distintas para habilitar el desafío", 3, 1, 20, 1, "Dificultad y progresión", "Las últimas partidas deben ser de dificultades distintas y cumplir precisión y misses."),
     field("challenge_accuracy", "Precisión mínima para el desafío (%)", 94.0, 80.0, 100.0, .5, "Dificultad y progresión", "Se comprueba en cada una de las últimas partidas necesarias."),
     field("challenge_miss_percent", "Máximo de misses para el desafío (%)", 2.0, 0.0, 10.0, .1, "Dificultad y progresión", "Porcentaje de misses sobre los objetos juzgados de cada partida."),
@@ -91,6 +90,14 @@ def validate_settings(updates, base=None):
         if result[lower] > result[upper]:
             raise ValueError(_FIELDS[lower]["label"] + " no puede superar " + _FIELDS[upper]["label"].lower() + ".")
     return result
+
+
+def load_settings(values):
+    """Retire the old duration ceiling without resetting other saved preferences."""
+    if isinstance(values, dict):
+        values = {key: value for key, value in values.items()
+                  if key not in {"length_multiplier", "length_extra_seconds"}}
+    return validate_settings(values)
 
 
 def get_setting(key):

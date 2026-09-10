@@ -2301,8 +2301,7 @@ function renderDiscovery(state) {
     if (numeric(physical.max_bpm))
       meta.push("Hasta " + format(physical.max_bpm) + " BPM");
     if (numeric(physical.max_ar)) meta.push("AR ≤ " + format(physical.max_ar));
-    if (numeric(physical.max_length))
-      meta.push("Duración ≤ " + duration(physical.max_length));
+    meta.push("Sin límite de duración");
   }
   const reserve = discovery.reserve || [];
   if (reserve.length)

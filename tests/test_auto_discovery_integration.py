@@ -68,7 +68,24 @@ class AutomaticDiscoveryTests(unittest.TestCase):
         for requirement in args["requirements"]:
             self.assertEqual(165, requirement["max_bpm"])
             self.assertEqual(8.7, requirement["max_ar"])
-            self.assertEqual(164, requirement["max_length"])
+            self.assertNotIn("max_length", requirement)
+
+    def test_long_online_maps_fill_missions_after_short_recent_plays(self):
+        self.fetch.return_value["maps"] = [dict(m, length=300 + i * 60) for i, m in enumerate(self.remote)]
+        before = self.coach.state()
+        saved = deepcopy(self.quests(before))
+        self.coach.background_enabled = True
+        self.coach.state()
+        self.coach.discovery_store.thread.join(3)
+        after = self.coach.state()
+        self.assertEqual([3, 3, 3], [len(g["quests"]) for g in after["quest_board"]["groups"]])
+        online = [q for q in self.quests(after) if q["map"]["source"] == "online"]
+        self.assertEqual(6, len(online))
+        self.assertTrue(all(q["map"]["length"] >= 300 for q in online))
+        current = {q["id"]: q for q in self.quests(after)}
+        for quest in saved:
+            self.assertEqual(quest, current[quest["id"]])
+        self.assertTrue(all("max_length" not in r for r in self.fetch.call_args.kwargs["requirements"]))
 
     def test_unsuitable_online_results_leave_needs_and_respect_cooldown(self):
         self.fetch.return_value["maps"] = [dict(m, ar=11) for m in self.remote]

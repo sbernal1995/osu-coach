@@ -31,7 +31,7 @@ from osu_coach.storage.tag_store import TagStore
 from osu_coach.integrations.telemetry import TosuTracker, read_snapshot
 from osu_coach.beatmaps.map_search import search_details
 from osu_coach.core.played_history import PlayedHistory
-from osu_coach.settings import validate_settings, settings_snapshot, coach_settings, get_setting, DEFAULTS
+from osu_coach.settings import validate_settings, load_settings, settings_snapshot, coach_settings, get_setting, DEFAULTS
 
 ROOT = Path.cwd()
 PACKAGE_ROOT = Path(__file__).resolve().parent
@@ -84,7 +84,7 @@ class Coach:
         self.config = load_json(self.config_path, {"since": utcnow(), "maps_path": detect_maps(), "initial_stars": 2.5})
         if args.maps:
             self.config["maps_path"] = str(Path(args.maps).expanduser().resolve())
-        self.settings = validate_settings(self.config.get("settings", {"initial_stars": self.config.get("initial_stars", 2.5)}))
+        self.settings = load_settings(self.config.get("settings", {"initial_stars": self.config.get("initial_stars", 2.5)}))
         self.config["settings"] = dict(self.settings)
         self.config["initial_stars"] = self.settings["initial_stars"]
         save_json(self.config_path, self.config)

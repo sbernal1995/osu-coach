@@ -21,7 +21,7 @@ from tests.test_discovery_store import beatmap
 
 class SettingsValidationTests(unittest.TestCase):
     def test_schema_defaults_are_complete_valid_and_isolated(self):
-        self.assertEqual(40, len(SCHEMA))
+        self.assertEqual(39, len(SCHEMA))
         self.assertEqual(DEFAULTS, validate_settings({}))
         self.assertEqual(len(SCHEMA), len({item['key'] for item in SCHEMA}))
         changed = validate_settings({'quality_min_votes': 30})
@@ -109,6 +109,27 @@ class SettingsAppTests(unittest.TestCase):
         self.assertEqual(4.2, self.coach.settings['initial_stars'])
         self.assertEqual(4.2, self.coach.state()['profile']['baseline'])
         self.assertEqual(10000, self.coach.settings['quality_min_plays'])
+
+    def test_retired_duration_settings_migrate_without_resetting_player_preferences(self):
+        self.coach.update_settings({'reference_plays': 70, 'quality_min_rating': 9.1})
+        self.coach.close(); self.coach.db.close()
+        path = Path(self.temp.name, 'config.json')
+        old = json.loads(path.read_text(encoding='utf-8'))
+        old['settings'].pop('warmup_preferred_seconds')
+        old['settings'].update(length_multiplier=2.5, length_extra_seconds=90)
+        path.write_text(json.dumps(old), encoding='utf-8')
+        self.coach = Coach(self.args)
+        self.assertEqual(70, self.coach.settings['reference_plays'])
+        self.assertEqual(9.1, self.coach.settings['quality_min_rating'])
+        self.assertEqual(150, self.coach.settings['warmup_preferred_seconds'])
+        saved = json.loads(path.read_text(encoding='utf-8'))
+        self.assertEqual(old['since'], saved['since'])
+        self.assertEqual(old['maps_path'], saved['maps_path'])
+        self.assertNotIn('length_multiplier', saved['settings'])
+        self.assertNotIn('length_extra_seconds', saved['settings'])
+        self.coach.close(); self.coach.db.close()
+        self.coach = Coach(self.args)
+        self.assertEqual(saved['settings'], self.coach.settings)
 
     def test_settings_endpoint_requires_token_origin_and_valid_body(self):
         server = ThreadingHTTPServer(('127.0.0.1', 0), Handler); server.coach = self.coach

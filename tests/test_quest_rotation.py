@@ -167,7 +167,7 @@ class QuestRotationTests(unittest.TestCase):
     def test_no_alternative_keeps_completed_visible_until_catalog_gains_a_valid_map(self):
         old = self.quests(self.initial)[0]
         self.coach.catalog = [deepcopy(quest["map"]) for quest in self.quests(self.initial)]
-        for index, unsuitable in enumerate(({"stars": 9}, {"bpm": 300}, {"ar": 11}, {"length": 900},
+        for index, unsuitable in enumerate(({"stars": 9}, {"bpm": 300}, {"ar": 11},
                                             {"id": old["map"]["id"]},
                                             {"key": old["map"]["key"], "id": 0,
                                              "title": old["map"]["title"].upper()})):
@@ -184,7 +184,7 @@ class QuestRotationTests(unittest.TestCase):
         self.assertEqual(1, waiting["quest_completions"]["total"])
         self.assertEqual(waiting["quest_board"], self.coach.state()["quest_board"])
         candidate = deepcopy(old["map"])
-        candidate.update(key="newly-scanned", id=999999, set_id=999999, title="New scanned song")
+        candidate.update(key="newly-scanned", id=999999, set_id=999999, title="New scanned song", length=900)
         self.coach.catalog.append(candidate)
         refreshed = self.coach.state()
         self.assertEqual(self.initial["id"], refreshed["quest_board"]["id"])

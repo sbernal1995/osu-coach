@@ -65,10 +65,10 @@ class DiscoveryRecommendationTests(unittest.TestCase):
         self.assertTrue(all(len(group["maps"]) == 3 for group in groups))
         self.assertTrue(all(m["source"] == "local" for m in flattened(groups)))
 
-    def test_online_slot_never_bypasses_stars_bpm_ar_or_length_limits(self):
+    def test_online_slot_never_bypasses_stars_bpm_or_ar_limits(self):
         local = [m for m in candidates() if m["source"] == "local"]
         invalid = [beatmap(900, online=True, stars=8), beatmap(901, online=True, bpm=185.01),
-                   beatmap(902, online=True, ar=8.701), beatmap(903, online=True, length=140.01),
+                   beatmap(902, online=True, ar=8.701),
                    beatmap(904, online=True, mode=3)]
         groups = engine.recommend(local + invalid, profile())
         self.assertTrue(all(m["source"] == "local" for m in flattened(groups)))

@@ -147,11 +147,11 @@ class RecommendationTests(unittest.TestCase):
         self.assertEqual(len(groups), 1)
         self.assertEqual([item["key"] for item in groups[0]["maps"]], ["candidate-1"])
 
-    def test_recommendations_respect_difficulty_tempo_reading_and_length_limits(self):
+    def test_recommendations_respect_difficulty_tempo_and_reading_limits(self):
         profile = engine.assess([play(i) for i in range(5)], NOW)
         maps = [beatmap(i, stars=2.5 + .05 * i) for i in range(24)]
         invalid = [beatmap(100, bpm=166), beatmap(101, ar=7.71),
-                   beatmap(102, length=165), beatmap(103, stars=9),
+                   beatmap(103, stars=9),
                    beatmap(104, mode=3), beatmap(105, stars=float("nan"))]
         groups = engine.recommend(maps + invalid, profile)
         chosen = []
@@ -163,7 +163,6 @@ class RecommendationTests(unittest.TestCase):
                 self.assertGreaterEqual(item["stars"], max(.1, group["target"] - .300001))
                 self.assertLessEqual(item["bpm"], 165)
                 self.assertLessEqual(item["ar"], 7.7)
-                self.assertLessEqual(item["length"], 164)
                 self.assertEqual(item["mode"], 0)
                 self.assertNotIn("path", item)
         self.assertTrue(chosen)

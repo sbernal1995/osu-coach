@@ -180,7 +180,7 @@ class PlayerPolicyIntegrationTests(unittest.TestCase):
         profile = engine.apply_player_profile(progression_profile(), player)
         tags = [{"name": "skillset/streams", "source": "manual"}]
         invalid = [beatmap(1, bpm=166, tags=tags), beatmap(2, ar=8.71, tags=tags),
-                   beatmap(3, length=165, tags=tags), beatmap(4, stars=7, tags=tags)]
+                   beatmap(4, stars=7, tags=tags)]
         groups = engine.recommend(invalid, profile, tag_analysis=analysis, player_profile=player)
         self.assertTrue(all(not group["maps"] for group in groups))
 

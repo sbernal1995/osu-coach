@@ -182,6 +182,15 @@ class DiscoveryDemandTests(unittest.TestCase):
         self.assertEqual(cursor, self.fetch.call_args.kwargs["cursor"])
         self.assertEqual(maps, self.store.maps)
 
+    def test_removing_duration_ceiling_revisits_previously_rejected_maps_after_restart(self):
+        self.assertTrue(self.sync())
+        self.reopen()
+        expanded = [{key: value for key, value in item.items() if key != "max_length"} for item in self.needs]
+        self.assertTrue(self.sync(epoch=NOW + 60, needs=expanded))
+        self.assertIsNone(self.fetch.call_args.kwargs["cursor"])
+        self.assertNotIn("max_length", self.fetch.call_args.kwargs["requirements"][0])
+        self.assertEqual(165, self.fetch.call_args.kwargs["requirements"][0]["max_bpm"])
+
     def test_new_star_envelope_restarts_cursor_to_revisit_previously_rejected_maps(self):
         narrow = [need("warmup", target=4.2, min_stars=4.0, max_stars=4.3)]
         self.assertTrue(self.sync(needs=narrow))

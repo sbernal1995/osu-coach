@@ -135,7 +135,7 @@ Cada tarjeta explica la meta para ese mapa. Es un objetivo de entrenamiento, no 
 
 Las nuevas misiones evitan dificultades exactas ya jugadas en ese perfil. Otras dificultades de la misma canción pueden seguir apareciendo. El perfil se separa por jugador, cliente y configuración de mods.
 
-Si una canción no te gusta, usá **No me gusta esta canción** en su misión. Se excluyen todas sus dificultades y otros sets con el mismo artista y título, incluidas las variantes romanizadas conocidas. La misión se reemplaza automáticamente cuando hay otra candidata. Si estás jugando ese mapa o falta confirmar su resultado, el reemplazo espera para conservar el intento. Podés deshacerlo en **Ajustes → Canciones excluidas**. El veto se guarda por jugador, persiste entre clientes, mods y recalibraciones, y conserva partidas y logros. Títulos de remixes o versiones distintos se tratan como canciones distintas.
+Si una canción no te gusta, abrí **Ver objetivos y detalles** de su misión y usá **No me gusta esta canción**. Se excluyen todas sus dificultades y otros sets con el mismo artista y título, incluidas las variantes romanizadas conocidas. La misión se reemplaza automáticamente cuando hay otra candidata. Si estás jugando ese mapa o falta confirmar su resultado, el reemplazo espera para conservar el intento. Podés deshacerlo en **Ajustes → Canciones excluidas**. El veto se guarda por jugador, persiste entre clientes, mods y recalibraciones, y conserva partidas y logros. Títulos de remixes o versiones distintos se tratan como canciones distintas.
 
 Los tags describen tendencias observadas en mapas comparables. Una asociación con un tag no identifica por sí sola el patrón concreto donde fallaste. El panel muestra cuánta evidencia respalda cada conclusión.
 

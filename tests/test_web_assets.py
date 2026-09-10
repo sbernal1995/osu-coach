@@ -29,7 +29,7 @@ class WebAssetsTests(unittest.TestCase):
 
     def test_browser_can_load_all_frontend_resources_with_correct_types(self):
         for path, content_type in [('/', 'text/html'), ('/assets/styles.css', 'text/css'),
-                                   ('/assets/compact.css', 'text/css'), ('/assets/app.js', 'text/javascript'),
+                                   ('/assets/compact.css', 'text/css'), ('/assets/training.css', 'text/css'), ('/assets/app.js', 'text/javascript'),
                                    ('/assets/profile-radar.js', 'text/javascript')]:
             with self.subTest(path=path):
                 status, headers, body = self.get(path)

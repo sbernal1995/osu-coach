@@ -2119,10 +2119,10 @@ function mapCard(map, quest = null, availability = null, automatic = false) {
         "Canción excluida en todas sus dificultades. Podés volver a permitirla en Ajustes.",
       );
       if (!ban.isConnected)
-        $("recommendations").querySelector(".song-preference-button")?.focus();
+        $("recommendations").querySelector(".map-actions button")?.focus();
     });
     preference.append(ban);
-    card.append(preference);
+    card.querySelector(".map-details").append(preference);
   }
   return card;
 }
@@ -2818,8 +2818,8 @@ function renderQuestBoard(state) {
     const stageLabels = {
       warmup: "Entrar en ritmo",
       practice: "Práctica principal",
-      challenge: "Consolidar y desafiar",
-      consolidate: "Consolidar y desafiar",
+      challenge: "Consolidar",
+      consolidate: "Consolidar",
     };
     title.append(
       element(
@@ -3411,6 +3411,15 @@ async function refresh() {
       throw new Error("Respuesta incompleta");
     currentState = state;
     online = true;
+    text(
+      "connection-user",
+      state.demo
+        ? "Modo de demostración"
+        : state.connection?.ok
+          ? "Conectado como " +
+            (state.profile_label?.split(" · ")[0] || "jugador")
+          : "Esperando osu! y tosu",
+    );
     $("initial-error").hidden = true;
     $("connection").dataset.offline = "false";
     $("connection").dataset.ok = String(Boolean(state.connection?.ok));
@@ -3427,6 +3436,7 @@ async function refresh() {
     $("connection").dataset.offline = "true";
     $("connection").dataset.ok = "false";
     text("connection-text", "Sin conexión · reintentando…");
+    text("connection-user", "Sin conexión · reintentando…");
     $("initial-error").hidden = false;
     $("recommendations").setAttribute("aria-busy", "false");
     setAvailability();
@@ -3450,6 +3460,7 @@ async function stopCoach() {
     $("connection").dataset.ok = "false";
     $("connection").dataset.offline = "false";
     text("connection-text", "Entrenador cerrado");
+    text("connection-user", "Entrenador cerrado");
     text("footer-status", "Seguimiento detenido");
     $("recommendations").setAttribute("aria-busy", "false");
     $("closed-banner").scrollIntoView({ block: "center", behavior: "instant" });
@@ -3542,74 +3553,201 @@ window.addEventListener("resize", () => {
     renderCoachChart(currentState.coach_progress);
 });
 
+function uiIcon(name) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  for (const [key, value] of Object.entries({
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    "stroke-width": "1.6",
+    "stroke-linecap": "round",
+    "stroke-linejoin": "round",
+    "aria-hidden": "true",
+    class: "ui-icon",
+  }))
+    svg.setAttribute(key, value);
+  const shapes = {
+    star: [
+      [
+        "path",
+        {
+          d: "m12 2 3.05 6.18 6.82.99-4.93 4.81 1.16 6.8L12 17.57l-6.1 3.21 1.17-6.8L2.14 9.17l6.81-.99Z",
+          fill: "currentColor",
+          stroke: "none",
+        },
+      ],
+    ],
+    target: [
+      ["circle", { cx: 12, cy: 12, r: 10 }],
+      ["circle", { cx: 12, cy: 12, r: 6.5 }],
+      ["circle", { cx: 12, cy: 12, r: 3 }],
+      ["path", { d: "m12 12 6-8" }],
+    ],
+    crosshair: [
+      ["circle", { cx: 12, cy: 12, r: 8 }],
+      ["path", { d: "M12 1v6m0 10v6M1 12h6m10 0h6" }],
+    ],
+    clock: [
+      ["circle", { cx: 12, cy: 12, r: 10 }],
+      ["path", { d: "M12 6v6l4 2" }],
+    ],
+    check: [
+      ["circle", { cx: 12, cy: 12, r: 10 }],
+      ["path", { d: "m6.5 12 3.5 3.5 7.5-8" }],
+    ],
+    refresh: [
+      [
+        "path",
+        {
+          d: "M20 7V3l-3 3A8 8 0 0 0 4 9M4 17v4l3-3a8 8 0 0 0 13-3M20 3h-4M4 21h4",
+        },
+      ],
+    ],
+    list: [
+      ["path", { d: "M8 5h13M8 12h13M8 19h13" }],
+      ["circle", { cx: 3, cy: 5, r: 1 }],
+      ["circle", { cx: 3, cy: 12, r: 1 }],
+      ["circle", { cx: 3, cy: 19, r: 1 }],
+    ],
+    search: [
+      ["circle", { cx: 10, cy: 10, r: 7 }],
+      ["path", { d: "m15 15 7 7" }],
+    ],
+    chevron: [["path", { d: "m8 5 7 7-7 7" }]],
+  };
+  for (const [tag, attributes] of shapes[name] || []) {
+    const shape = document.createElementNS(svg.namespaceURI, tag);
+    for (const [key, value] of Object.entries(attributes))
+      shape.setAttribute(key, value);
+    svg.append(shape);
+  }
+  return svg;
+}
+function setupTrainingLayout() {
+  document
+    .querySelectorAll("[data-icon]")
+    .forEach((node) => node.replaceChildren(uiIcon(node.dataset.icon)));
+  const mission = $("mission-section"),
+    overview = $("quest-overview"),
+    guide = mission.querySelector(".session-guide");
+  guide.append(
+    mission.querySelector(".catalog-meta"),
+    mission.querySelector(".quest-explainer"),
+  );
+  const title = overview.querySelector(".quest-progress-title"),
+    completed = $("quest-completed-total"),
+    renew = $("quest-new-button");
+  guide.append($("quest-progress"));
+  overview.replaceChildren(
+    uiIcon("list"),
+    title,
+    element("span", "toolbar-divider", "/"),
+    completed,
+    element("span", "toolbar-divider", "/"),
+    renew,
+  );
+  renew.setAttribute("aria-label", "Renovar misiones pendientes");
+  const toolbar = element("div", "mission-toolbar");
+  mission.insertBefore(toolbar, overview);
+  toolbar.append(overview, guide);
+  const discovery = $("discovery-bar"),
+    drawer = element("details", "discovery-drawer"),
+    summary = element("summary");
+  const label = element("span", "discovery-preview-label");
+  label.append(
+    element("strong", "", "Buscar mapas nuevos"),
+    element(
+      "small",
+      "",
+      "Explorá canciones que se adapten a tu entrenamiento.",
+    ),
+  );
+  label.lastChild.id = "discovery-preview-message";
+  const quality = element("span", "discovery-preview-quality");
+  quality.id = "discovery-preview-quality";
+  summary.append(uiIcon("search"), label, quality, uiIcon("chevron"));
+  drawer.append(summary);
+  discovery.before(drawer);
+  drawer.append(discovery);
+}
+
 // Keep primary tasks visible; the original details and actions remain reachable.
 function compactMapCard(card, map, quest) {
   card.dataset.mapKey = String(
     quest?.id ?? map.key ?? map.beatmap_id ?? map.title + "|" + map.version,
   );
-  const detail = element("details", "map-details");
-  detail.append(element("summary", "", "Objetivos y detalles"));
-  const keep = new Set([
-    "quest-card-top",
-    "map-heading",
-    "version",
-    "map-creator",
-    "source-badge",
-    "map-stats",
-    "map-actions",
-  ]);
-  for (const child of Array.from(card.children)) {
-    if (![...child.classList].some((name) => keep.has(name)))
-      detail.append(child);
-  }
+  const details = element("details", "map-details");
+  details.append(element("summary", "", "Ver objetivos y detalles"));
+  const actions = card.querySelector(".map-actions");
+  const originalCreator = card.querySelector(".map-creator")?.textContent || "";
+  const creator = originalCreator.replace(/^Mapper:\s*/, "");
+  // Full metadata, grade rules, attempt evidence and search alternatives stay reachable.
+  for (const child of Array.from(card.children))
+    if (child !== actions) details.append(child);
+  const heading = element("div", "map-heading");
+  const title = element("h3", "song-title", map.title || "Mapa sin título");
+  title.title = map.title || "Mapa sin título";
+  const difficulty = element(
+    "span",
+    "difficulty-badge",
+    map.version || "Sin dificultad",
+  );
+  difficulty.title = "Dificultad: " + (map.version || "Sin datos");
+  heading.append(title, difficulty);
+  const byline = element("p", "map-byline");
+  byline.append(element("span", "", map.artist || "Artista sin datos"));
+  if (creator)
+    byline.append(
+      element("span", "byline-divider", "|"),
+      element("span", "", "mapa de " + creator),
+    );
+  byline.title = [map.artist, creator ? "Mapa de " + creator : ""]
+    .filter(Boolean)
+    .join(" · ");
+  const stats = element("div", "map-stats");
+  const stars = element("span", "star-rating");
+  stars.append(uiIcon("star"), document.createTextNode(format(map.stars)));
+  stats.append(
+    stars,
+    element("span", "", format(map.bpm) + " BPM"),
+    element("span", "", duration(map.length).padStart(5, "0")),
+    element("span", "", "AR " + format(map.ar)),
+  );
   const expected = map.expectation || {};
   const goal = element("div", "compact-goal");
-  const grade =
+  goal.append(element("strong", "", "Objetivo: "));
+  const targets = [
     expected.grade_label ||
-    (expected.grade_min ? expected.grade_min + " o mejor" : null);
-  goal.append(element("strong", "", grade || "Completar el mapa"));
-  const metrics = element("div", "goal-numbers");
+      (expected.grade_min ? expected.grade_min + " o mejor" : "Completar"),
+  ];
   if (numeric(expected.accuracy_min))
-    metrics.append(
-      element(
-        "span",
-        "",
-        "≥ " + accuracy(expected.accuracy_min) + " precisión",
-      ),
-    );
+    targets.push("≥" + accuracy(expected.accuracy_min).replace(/\s+%/, "%"));
   if (numeric(expected.misses_max))
-    metrics.append(
-      element("span", "", "≤ " + format(expected.misses_max) + " misses"),
-    );
+    targets.push("≤" + format(expected.misses_max) + " misses");
   if (numeric(expected.combo_min))
-    metrics.append(
-      element("span", "", "≥ " + format(expected.combo_min) + "× combo"),
-    );
-  if (metrics.childElementCount) goal.append(metrics);
-  if (grade && expected.complete_required !== false)
-    goal.append(
-      element("span", "goal-complete", "Completá el mapa con estos mínimos."),
-    );
+    targets.push("≥" + format(expected.combo_min) + "×");
+  goal.append(element("span", "", targets.join(" · ")));
+  goal.title =
+    "Completá el mapa: " +
+    targets.join(" · ") +
+    (numeric(expected.combo_min) ? " de combo" : "");
   if (!map.expectation && map.goal) goal.append(element("span", "", map.goal));
-  if (quest?.last_attempt?.checks?.length) {
-    const checks = quest.last_attempt.checks;
-    const met = checks.filter((check) => check.status === "met").length;
-    const unknown = checks.filter((check) => check.status === "unknown").length;
-    goal.append(
+  const status = quest?.status;
+  card.replaceChildren(heading, byline, stats);
+  if (status === "in_progress" || status === "completed") {
+    card.append(
       element(
         "p",
-        "goal-attempt",
-        met +
-          "/" +
-          checks.length +
-          " requisitos alcanzados" +
-          (unknown ? " · " + unknown + " sin verificar" : ""),
+        "compact-attempt",
+        status === "completed"
+          ? "Completada · buscando reemplazo"
+          : "En práctica · " +
+              format(quest.attempt_count, "0") +
+              (quest.attempt_count === 1 ? " intento" : " intentos"),
       ),
     );
   }
-  const actions = card.querySelector(".map-actions");
-  card.insertBefore(goal, actions);
-  card.append(detail);
+  card.append(goal, actions, details);
 }
 
 function preserveMissionInteraction(renderCards) {
@@ -3636,13 +3774,28 @@ function preserveMissionInteraction(renderCards) {
     const descriptions = Array.from(stage.children).filter((child) =>
       child.classList.contains("stage-description"),
     );
-    if (descriptions.length) {
+    const count = stage.querySelector(".quest-stage-count");
+    if (descriptions.length || count) {
       const more = element("details", "stage-guide");
-      more.append(element("summary", "", "Sobre esta etapa"));
+      const summaries = {
+        warmup: "Mapas accesibles para calentar y estabilizar.",
+        practice: "Mapas de tu rango para trabajar habilidades clave.",
+        challenge: "Afianzá tu nivel y prepará el próximo paso.",
+      };
+      const summary = element(
+        "summary",
+        "",
+        summaries[stage.dataset.stage] || "Orientación de esta etapa",
+      );
+      summary.title = "Ver orientación y estado de esta etapa";
+      more.append(summary);
+      if (count) more.append(count);
       descriptions.forEach((child) => more.append(child));
       more.open = stageOpen.get(stage.dataset.stage) || false;
-      stage.insertBefore(more, stage.querySelector(".map-card"));
+      stage.querySelector(".stage-top > div").append(more);
     }
+    const number = stage.querySelector(".step-number");
+    if (number) number.textContent = String(Number(number.textContent));
     // Active missions precede refill notices; empty stages still show their status.
     if (stage.querySelector(".map-card"))
       Array.from(stage.children)
@@ -3698,19 +3851,14 @@ function renderCompactProfile(state) {
   );
   const strengths = state.player_profile?.strengths || [];
   const host = $("quick-strengths");
-  host.replaceChildren(
-    element("h3", "", "Puntos fuertes"),
-    element(
-      "p",
-      "",
-      strengths.length
-        ? strengths
-            .slice(0, 3)
-            .map((x) => x.label)
-            .join(" · ")
-        : "Reuniendo evidencia en distintos mapas.",
-    ),
-  );
+  const pills = element("div", "strength-pills");
+  if (strengths.length)
+    strengths.forEach((item) =>
+      pills.append(element("span", "strength-pill", item.label)),
+    );
+  else
+    pills.append(element("p", "", "Reuniendo evidencia en distintos mapas."));
+  host.replaceChildren(element("h3", "", "Puntos fuertes"), pills);
   text(
     "quick-focus-label",
     state.player_profile?.priorities?.[0]?.label ||
@@ -3722,7 +3870,10 @@ function renderCompactProfile(state) {
   text(
     "quick-rank-value",
     numeric(rank?.stars)
-      ? format(rank.stars) + " ★ consolidadas"
+      ? Number(rank.stars).toLocaleString("es-AR", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })
       : "Rango por consolidar",
   );
   text(
@@ -3736,6 +3887,71 @@ function renderCompactProfile(state) {
           format(next.required_maps, "3") +
           " mapas →"
       : "Ver tu progreso →",
+  );
+  text(
+    "quick-rank-target",
+    numeric(next?.stars) ? format(next.stars) : "Por definir",
+  );
+  const earned = Number(next?.completed_maps) || 0,
+    required = Number(next?.required_maps) || 3;
+  text("quick-rank-evidence", earned + " / " + required);
+  $("quick-rank-fill").style.width =
+    Math.min(100, Math.max(0, (earned / required) * 100)) + "%";
+  const session = state.profile?.session || state.profile || {};
+  text(
+    "session-accuracy",
+    numeric(session.accuracy) ? accuracy(session.accuracy) : "Sin datos",
+  );
+  const calibrated = state.profile?.phase === "training";
+  text(
+    "calibration-label",
+    calibrated ? "Calibración completa" : "Calibración inicial",
+  );
+  text(
+    "session-readiness",
+    calibrated
+      ? "Lista para entrenar"
+      : $("calibration-count").textContent + " partidas registradas",
+  );
+  $("overview-panel").dataset.calibrated = String(calibrated);
+  document
+    .querySelector(".session-calibration [data-icon]")
+    .replaceChildren(uiIcon(calibrated ? "check" : "clock"));
+  text("progression-caption", "Elegí un mapa y cumplí sus objetivos.");
+  if (
+    state.quest_board?.automatic_refresh ||
+    (!state.quest_board && state.quest_completions)
+  ) {
+    text(
+      "quest-progress-label",
+      Number(state.quest_board?.active_count) === 1 ? "activa" : "activas",
+    );
+    text(
+      "quest-completed-total",
+      format(state.quest_completions?.total, "0") + " completadas",
+    );
+    $("quest-new-button").replaceChildren(
+      uiIcon("refresh"),
+      document.createTextNode("Renovar pendientes"),
+    );
+  }
+  const policy = state.discovery?.quality_policy || {};
+  text(
+    "discovery-preview-quality",
+    format(policy.min_rating ?? 8) +
+      " / 10 · " +
+      format(policy.min_votes ?? 10) +
+      " votos · " +
+      format(policy.min_play_count ?? 10000) +
+      " partidas",
+  );
+  text(
+    "discovery-preview-message",
+    state.discovery?.state === "loading"
+      ? "Buscando más alternativas para tu entrenamiento…"
+      : state.discovery?.state === "error"
+        ? "La búsqueda necesita reintentarse. Ver estado y opciones."
+        : "Explorá canciones que se adapten a tu entrenamiento.",
   );
 }
 
@@ -3815,14 +4031,9 @@ function setupNavigation() {
     "aria-label",
     "Tabla de partidas recientes; desplazable en pantallas pequeñas",
   );
-  const compactViewport = matchMedia("(max-width:800px)");
-  const updateOverview = () => {
-    $("overview-panel").open = !compactViewport.matches;
-  };
-  compactViewport.addEventListener("change", updateOverview);
-  updateOverview();
   fromHash();
 }
 
+setupTrainingLayout();
 setupNavigation();
 poll();

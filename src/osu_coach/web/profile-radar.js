@@ -135,7 +135,7 @@ export function renderRadar(
   { id = host.id, mode = "control", compact = false } = {},
 ) {
   const svg = svgElement("svg", {
-    viewBox: "0 0 360 320",
+    viewBox: compact ? "0 0 360 300" : "0 0 360 320",
     role: "img",
     "aria-labelledby": id + "-title " + id + "-description",
   });
@@ -173,6 +173,10 @@ export function renderRadar(
   };
   const points = (scale) =>
     axes.map((axis, index) => xy(index, scale).join(",")).join(" ");
+  if (compact)
+    svg.append(
+      svgElement("polygon", { points: points(1), class: "radar-reference" }),
+    );
   for (const step of [25, 50, 75, 100])
     svg.append(
       svgElement("polygon", {
@@ -194,7 +198,8 @@ export function renderRadar(
         Math.abs(lx - cx) < 10 ? "middle" : lx > cx ? "start" : "end",
     });
     const displayLabel = compact
-      ? { misses: "Misses", completion: "Completar" }[axis.key] || axis.label
+      ? { misses: "Control de misses", completion: "Completar" }[axis.key] ||
+        axis.label
       : axis.label;
     const words = displayLabel.split(" "),
       lines = [];

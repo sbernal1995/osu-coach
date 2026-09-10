@@ -12,6 +12,7 @@
     <title>osu! coach · Tu nivel de hoy</title>
     <link rel="stylesheet" href="/assets/styles.css" />
     <link rel="stylesheet" href="/assets/compact.css" />
+    <link rel="stylesheet" href="/assets/training.css" />
   </head>
   <body>
     <a class="skip-link" href="#main-content">Ir al contenido</a>
@@ -74,10 +75,17 @@
             Ajustes
           </button>
         </nav>
-        <div class="connection" id="connection" role="status">
-          <span class="dot"></span
-          ><span id="connection-text">Conectando con tu sesión…</span>
-        </div>
+        <details class="connection-menu">
+          <summary>
+            <span class="connection" id="connection"
+              ><span class="dot"></span
+              ><span id="connection-user">Conectando…</span></span
+            ><span data-icon="chevron" aria-hidden="true"></span>
+          </summary>
+          <div class="connection-popover">
+            <p id="connection-text" role="status">Conectando con tu sesión…</p>
+          </div>
+        </details>
       </header>
       <div id="demo-banner" class="demo-banner" hidden>
         <strong>Modo de demostración</strong
@@ -87,22 +95,7 @@
         >
       </div>
       <main id="main-content" tabindex="-1">
-        <div class="intro">
-          <div>
-            <h1>Tu nivel de hoy.</h1>
-            <p>Elegí un mapa, jugalo y encontrá tu próximo paso.</p>
-          </div>
-          <div class="intro-tools">
-            <span id="mode-label" class="mode-tag">osu!standard</span
-            ><a
-              id="settings-open"
-              class="settings-open"
-              href="#settings-section"
-              hidden
-              >Configuración</a
-            >
-          </div>
-        </div>
+        <h1 class="visually-hidden">Tu nivel de hoy. Entrenamiento de osu!</h1>
         <div id="initial-error" class="initial-error" role="alert" hidden>
           <strong>El coach está desconectado</strong>
           <p>
@@ -113,31 +106,71 @@
         <div id="closed-banner" class="closed-banner" role="status" hidden>
           Entrenador cerrado. Volvé a abrir iniciar.cmd para continuar.
         </div>
-        <details id="overview-panel" class="overview-panel" open>
-          <summary>
-            <span>Tu sesión</span
-            ><strong id="overview-value">Cargando referencia…</strong>
+        <details id="overview-panel" class="overview-panel">
+          <summary
+            class="session-strip"
+            title="Ver detalles de tu sesión, perfil y calibración"
+          >
+            <span class="session-cell session-level"
+              ><span class="session-eyebrow">Tu nivel de hoy</span
+              ><span class="session-level-line"
+                ><span data-icon="star" aria-hidden="true"></span
+                ><strong id="baseline">···</strong
+                ><span id="level-unit">estrellas</span></span
+              ></span
+            >
+            <span class="session-cell session-focus"
+              ><span data-icon="target" aria-hidden="true"></span
+              ><span
+                ><strong id="focus">Encontrar tu ritmo</strong
+                ><small>Tu enfoque de hoy</small></span
+              ></span
+            >
+            <span class="session-cell session-accuracy"
+              ><span data-icon="crosshair" aria-hidden="true"></span
+              ><span
+                ><strong id="session-accuracy">···</strong
+                ><small>precisión en la sesión</small></span
+              ></span
+            >
+            <span class="session-cell session-calibration"
+              ><span data-icon="check" aria-hidden="true"></span
+              ><span
+                ><strong id="calibration-label">Calibración inicial</strong
+                ><small id="session-readiness"
+                  >Preparando tu referencia</small
+                ></span
+              ></span
+            >
           </summary>
+          <span id="overview-value" class="visually-hidden"
+            >Cargando referencia…</span
+          >
           <section class="dashboard" aria-label="Tu punto de partida">
             <article class="panel level-panel">
               <h2 class="panel-label">Dificultad de referencia</h2>
-              <div class="level-readout">
-                <span id="baseline" class="level-value">···</span
-                ><span id="level-unit" class="level-unit">estrellas</span>
-              </div>
               <details class="summary-detail">
                 <summary>Cómo se calcula</summary>
                 <p id="baseline-description" class="small-text">
                   Preparando tu punto de partida…
                 </p>
               </details>
+              <div class="intro-tools">
+                <span id="mode-label" class="mode-tag">osu!standard</span
+                ><a
+                  id="settings-open"
+                  class="settings-open"
+                  href="#settings-section"
+                  hidden
+                  >Configuración</a
+                >
+              </div>
               <span id="profile-label" class="profile-label"
                 >Cargando perfil…</span
               >
             </article>
             <article class="panel">
               <h2 class="panel-label">Qué trabajar ahora</h2>
-              <p id="focus" class="focus-value">Escuchando tu sesión</p>
               <details class="summary-detail">
                 <summary>Orientación de la sesión</summary>
                 <p id="profile-message" class="small-text">
@@ -149,9 +182,7 @@
             </article>
             <article class="panel calibration-panel">
               <div class="calibration-head">
-                <h2 id="calibration-label" class="panel-label">
-                  Calibración inicial
-                </h2>
+                <h2 class="panel-label">Calibración y memoria</h2>
                 <span id="calibration-count" class="calibration-count"
                   >0/5</span
                 >
@@ -379,12 +410,18 @@
                   </button>
                 </div>
                 <div id="quick-radar" class="radar-host"></div>
+                <div class="radar-legend">
+                  <span><i class="legend-player"></i>Tu perfil</span
+                  ><span
+                    ><i class="legend-reference"></i>Referencia de control</span
+                  >
+                </div>
                 <p class="radar-caption">
                   Control respecto de tus referencias · 0–100
                 </p>
                 <div id="quick-strengths" class="quick-findings"></div>
                 <div class="quick-focus">
-                  <h3>Próximo foco</h3>
+                  <h3>Área de mejora</h3>
                   <p id="quick-focus-label">Reunir partidas comparables</p>
                 </div>
                 <button
@@ -392,12 +429,29 @@
                   class="quick-rank"
                   data-go-view="progress"
                 >
-                  <span>Tu rango personal</span
-                  ><strong id="quick-rank-value">Por consolidar</strong
-                  ><span id="quick-rank-next">Ver tu progreso →</span>
+                  <span class="rank-current"
+                    ><span>Tu rango</span
+                    ><strong
+                      ><span data-icon="star" aria-hidden="true"></span
+                      ><span id="quick-rank-value">Por consolidar</span></strong
+                    ><span>estrellas consolidadas</span></span
+                  >
+                  <span class="rank-next"
+                    ><span>Próximo rango</span
+                    ><strong id="quick-rank-target">···</strong
+                    ><span class="rank-next-bottom"
+                      ><span class="rank-progress-track"
+                        ><span id="quick-rank-fill"></span></span
+                      ><span id="quick-rank-evidence">0 / 3</span></span
+                    ></span
+                  >
+                  <span id="quick-rank-next" class="visually-hidden"
+                    >Ver tu progreso</span
+                  >
                 </button>
                 <p class="quick-profile-note">
-                  Se ajusta con tus partidas recientes.
+                  La consistencia se construye con resultados sólidos en mapas
+                  distintos.
                 </p>
               </div>
             </aside>

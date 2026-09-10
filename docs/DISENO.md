@@ -10,13 +10,13 @@ El panel prioriza elegir una misión, conocer sus objetivos y jugarla. Su estruc
 | Historial | Partidas recientes, misiones completadas, retiradas y tandas anteriores. |
 | Ajustes | Todos los parámetros existentes, validación y guardado. |
 
-El resumen de referencia, foco y calibración sigue disponible en todas las vistas. En móvil comienza plegado y muestra la referencia y el foco. La navegación y los desplegables funcionan con teclado. Las actualizaciones conservan la misión abierta y su foco, así como los valores que se están editando en Ajustes.
+La franja superior muestra referencia, foco, precisión de la sesión y calibración en todas las vistas. Al desplegarla aparecen el cálculo, la identidad del perfil, el contexto de la sesión y los controles de calibración. En móvil los cuatro indicadores se distribuyen en dos filas. La navegación y los desplegables funcionan con teclado. Las actualizaciones conservan la misión abierta y su foco, así como los valores que se están editando en Ajustes.
 
 ## Jerarquía y densidad
 
-Se redujeron el tamaño del encabezado, los márgenes, las tarjetas y los textos repetidos en la lectura principal. El rosa destaca la acción de copiar una búsqueda; los estados combinan texto y color. El título, la dificultad y el mapper pueden ocupar varias líneas para conservar nombres largos y caracteres japoneses.
+La composición sigue la imagen de referencia compartida por el usuario: encabezado de 64 px, resumen de unos 100 px, panel de misiones con tres etapas y una ficha lateral de 374 px en escritorio. Las tarjetas muestran nombre, dificultad, artista y mapper, estadísticas y objetivo. El rosa destaca **Ver mapa / descargar**; **Copiar búsqueda** usa un botón con borde. Los nombres largos se abrevian en la tarjeta y se conservan completos en su descripción y en los detalles desplegables. La dificultad ocupa la insignia superior; el catálogo no aporta géneros musicales verificables para imitar las etiquetas del ejemplo.
 
-Los objetivos visibles expresan el grado mínimo, la precisión, el máximo de misses y el combo real requerido. **Objetivos y detalles** contiene las comprobaciones por requisito, la razón de la meta, los tags y las demás formas de buscar. El combo se expresa en cantidad de notas del combo, igual que la misión, y no se sustituye por un porcentaje aproximado.
+Los objetivos visibles expresan el grado mínimo, la precisión, el máximo de misses y el combo real requerido. **Ver objetivos y detalles** contiene las comprobaciones por requisito, la razón de la meta, los tags y las demás formas de buscar. El combo se expresa con el multiplicador × y conserva la cantidad exacta exigida por la misión. La explicación desplegada identifica el requisito completo. El veto **No me gusta esta canción** también está dentro de ese desplegable.
 
 La información secundaria se agrupa siguiendo la [divulgación progresiva de Nielsen Norman Group](https://www.nngroup.com/articles/progressive-disclosure/). La separación por tareas y la reducción de elementos decorativos aplican sus [pautas para aplicaciones complejas](https://www.nngroup.com/articles/complex-application-design/).
 
@@ -42,4 +42,6 @@ Los datos ausentes no se convierten en ceros ni se conectan con una línea que i
 
 Las pestañas usan nombres, estados y navegación con flechas, Inicio y Fin conforme al [patrón de pestañas WAI-ARIA](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/). El foco es visible, los botones principales tienen áreas de pulsación amplias y las tablas pueden desplazarse dentro de su región en pantallas pequeñas. El espaciado y los controles consideran el [tamaño mínimo de objetivos de WCAG 2.2](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html).
 
-La revisión incluyó las cinco vistas a 1440, 1024, 768, 390 y 320 píxeles, navegación por teclado, despliegue de misiones durante una actualización, copia de búsqueda, edición y descarte de ajustes y estados vacíos o parciales del radar. Esto documenta las comprobaciones realizadas y no constituye una certificación integral de accesibilidad.
+La revisión del ajuste a la referencia incluyó las cinco vistas a 1505, 1280, 1024, 768, 390 y 320 píxeles, navegación por teclado, despliegue de misiones durante una actualización, copia de búsqueda, edición y descarte de ajustes y estados vacíos o parciales del radar. Esto documenta las comprobaciones realizadas y no constituye una certificación integral de accesibilidad.
+
+Los estilos de la composición de entrenamiento viven en `web/training.css`; `compact.css` conserva las vistas de análisis, progreso, historial y ajustes. Los iconos son SVG locales y la tipografía usa fuentes del sistema. El diseño no necesita peticiones externas para cargarlos.

@@ -636,7 +636,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/":
             return self.send(200, (PACKAGE_ROOT / "web" / "index.html").read_bytes(), "text/html; charset=utf-8")
         # Explicit allowlist: runtime files and arbitrary filesystem paths stay private.
-        assets = {"styles.css": "text/css", "compact.css": "text/css",
+        assets = {"styles.css": "text/css", "compact.css": "text/css", "training.css": "text/css",
                   "app.js": "text/javascript", "profile-radar.js": "text/javascript"}
         name = path.removeprefix("/assets/") if path.startswith("/assets/") else None
         if name in assets:

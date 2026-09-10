@@ -23,7 +23,8 @@ osu-coach/
 │       └── web/
 │           ├── index.html   Estructura y vistas del panel
 │           ├── styles.css   Componentes y estados compartidos
-│           ├── compact.css  Diseño compacto y adaptación a pantallas
+│           ├── compact.css  Vistas de análisis y componentes compartidos
+│           ├── training.css Composición del entrenamiento según la referencia
 │           ├── app.js       Renderizado, navegación y acciones
 │           └── profile-radar.js  Transformación visual y radar accesible
 ├── tests/                   Pruebas con datos ficticios

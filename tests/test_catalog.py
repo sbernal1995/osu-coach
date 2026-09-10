@@ -215,7 +215,7 @@ class CatalogIntegrationTests(unittest.TestCase):
                 return True
 
         with patch.object(rosu, "Beatmap", return_value=SuspiciousMap()):
-            with patch.object(rosu, "Difficulty", side_effect=AssertionError("must not calculate")):
+            with patch.object(catalog.calculator, "calculate", side_effect=AssertionError("must not calculate")):
                 self.assertEqual(catalog.scan_catalog(self.root), [])
 
 

@@ -31,6 +31,7 @@ from osu_coach.storage.tag_store import TagStore
 from osu_coach.integrations.telemetry import TosuTracker, read_snapshot
 from osu_coach.beatmaps.map_search import search_details
 from osu_coach.core.played_history import PlayedHistory
+from osu_coach.integrations.lazer_calculator import CALCULATOR_ID
 from osu_coach.settings import validate_settings, load_settings, settings_snapshot, coach_settings, get_setting, DEFAULTS
 
 ROOT = Path.cwd()
@@ -96,6 +97,7 @@ class Coach:
         self.progress_store = ProgressStore(self.db)
         self.db.commit()
         self.catalog = []
+        self.catalog_stale = False
         self.adjusted = {}
         self.scanning = False
         self.scan_count = 0
@@ -117,6 +119,10 @@ class Coach:
             cache = load_json(self.data / "catalog.json", {})
             if isinstance(cache, dict) and cache.get("root") == self.config["maps_path"]:
                 self.catalog = cache.get("maps", [])
+                self.catalog_stale = cache.get("calculator") != CALCULATOR_ID
+                if self.catalog_stale:
+                    # Retain identities and paths while excluding obsolete stars.
+                    self.catalog = [{**m, "stars": None} for m in self.catalog]
         if self.active:
             with self.db:
                 self.sync_progress(self.active)
@@ -308,9 +314,10 @@ class Coach:
                 def progress(count):
                     self.scan_count = count
                 result = scan_catalog(root, progress=progress)
-                save_json(self.data / "catalog.json", {"root": root, "created_at": utcnow(), "calculator": "rosu-pp-py 4.0.2", "maps": result})
+                save_json(self.data / "catalog.json", {"root": root, "created_at": utcnow(), "calculator": CALCULATOR_ID, "maps": result})
                 with self.lock:
                     self.catalog = result
+                    self.catalog_stale = False
                     self.adjusted.clear()
             except Exception as error:
                 with self.lock:
@@ -537,6 +544,9 @@ class Coach:
             if search_needs and not needs:
                 discovery["next_retry"] = self.discovery_store.snapshot(self.catalog, sample, needs=search_needs)["next_retry"]
             quest_availability = {}
+            current_difficulties = {m["key"]: m for m in maps
+                                    if m.get("calculator") == CALCULATOR_ID and number(m.get("stars")) > 0}
+            current_difficulty_ids = {m["id"]: m for m in current_difficulties.values() if m.get("id")}
             if quest_board:
                 for group in quest_board["groups"]:
                     for quest in group["quests"]:
@@ -550,12 +560,19 @@ class Coach:
                                           "title_romanized", "artist_romanized"):
                                 if local_map.get(field):
                                     lookup[field] = local_map[field]
+                        current = current_difficulties.get(beatmap.get("key"))
+                        if current is None and is_remote(beatmap):
+                            current = current_difficulty_ids.get(beatmap.get("id"))
                         quest_availability[quest["id"]] = {
                             "installed": local_map is not None, **search_details(lookup),
+                            "difficulty": ({key: current[key] for key in ("stars", "calculator")} if current else None),
+                            "difficulty_pending": self.catalog_stale and local_map is not None,
                             "popularity": copy.deepcopy(self.download_evidence(beatmap, popularity).get("popularity"))}
             recent = list(reversed(profile.pop("session_window")))
             profile.pop("window")
             warnings = [m for m in [self.scan_error, mod_warning] if m]
+            if self.catalog_stale:
+                warnings.append("Actualizando las estrellas de tu biblioteca con el motor de osu!lazer.")
             if not self.catalog and not self.scanning:
                 warnings.append("Todavía no hay mapas locales disponibles.")
             if sample and sample.get("mods") and not maps and not mod_warning:
@@ -720,6 +737,12 @@ def main():
                 return
         except Exception:
             pass
+    if not args.demo:
+        from osu_coach.integrations.lazer_calculator import install
+        try:
+            install()
+        except RuntimeError as error:
+            parser.exit(1, str(error) + "\n")
     coach = Coach(args)
     try:
         server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)

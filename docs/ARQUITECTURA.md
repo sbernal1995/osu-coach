@@ -18,6 +18,7 @@ osu-coach/
 │       ├── demo.py          Mapas y partidas ficticios
 │       ├── core/            Reglas de entrenamiento y evaluación
 │       ├── beatmaps/        Catálogo e identidad de dificultades
+│       ├── calculator/      Worker de Node y dependencia nativa fijada con npm
 │       ├── integrations/    Lectura de tosu y fuentes públicas
 │       ├── storage/         Persistencia del estado y cachés
 │       └── web/
@@ -66,6 +67,7 @@ El programa busca el panel dentro del paquete instalado. Los datos propios del u
 | Ubicación | Uso |
 | --- | --- |
 | `data/live/` | Entrenamiento habitual |
+| `data/runtime/calculator/` | Motor nativo descargado por npm, compartido por los perfiles |
 | `data/demo/` | Demostración con datos ficticios |
 | `vendor/tosu/` | Copia portátil de tosu instalada manualmente, si se usa |
 | `.venv/` | Entorno de Python del lanzador |
@@ -83,3 +85,13 @@ El servidor publica únicamente los cuatro recursos enumerados en `/assets/`. El
 La exclusión se aplica antes de seleccionar recomendaciones o reservas. Las misiones retiradas por gusto musical quedan en `quest_skips` con motivo `song_banned`, conservando intentos y resultados anteriores. Un mapa en juego o con confirmación pendiente espera para retirarse. Permitir una canción otra vez no modifica dificultades ya jugadas ni el registro de misiones retiradas.
 
 `DiscoveryStore` comparte la continuación entre las búsquedas por demanda, periódicas y manuales. El cursor del conector admite una cola de identificadores por verificar además de la posición en el catálogo. Así, el límite de ocho verificaciones por lote no descarta los conjuntos restantes. Las peticiones siguen acotadas y espaciadas. Los filtros de todas las etapas se envían al conector local y la reserva online se cuenta fuera de las canciones ya asignadas.
+
+## Motor de dificultad
+
+El escaneo y el cálculo con mods llaman a `integrations/lazer_calculator.py`, que mantiene un proceso local de Node.js para `calculator/worker.cjs`. El worker usa `@tosuapp/lazer-calculator-prebuilt` en la versión fijada por `package-lock.json`. La instalación ejecuta `npm ci --ignore-scripts` explícitamente al iniciar el servicio normal; ni una petición HTTP ni un cálculo individual descargan programas. `--demo` omite esa preparación.
+
+El worker recibe contenido del mapa y ajustes de mods por entrada estándar. Devuelve estrellas, atributos y el identificador de versión. No escribe archivos del juego. El proceso se recicla periódicamente para liberar memoria nativa y tiene un tiempo de espera acotado. Un fallo del motor se informa sin volver a fórmulas anteriores. `rosu-pp-py` sigue leyendo mapas y calculando BPM y velocidad; las estrellas proceden únicamente del motor nativo.
+
+El catálogo persiste su identificador de motor. Una caché de otra versión conserva identidades y rutas, pero suspende las estrellas anteriores hasta completar el escaneo. `quest_availability.difficulty` permite mostrar las estrellas actuales de la revisión exacta con los mods del perfil sin reescribir el mapa, los objetivos ni los intentos guardados en la misión. Una misión online puede vincularse por su identificador exacto al mapa importado. Los resultados y los hitos históricos no se recalculan.
+
+Los archivos del worker y los manifiestos npm se incluyen en el paquete Python; los binarios se instalan en `data/runtime/calculator/` y quedan fuera del repositorio. `OSU_COACH_CALCULATOR_DIR` permite ubicar ese entorno en otra carpeta. Para actualizar el algoritmo hay que cambiar la versión en el adaptador y en el manifiesto, regenerar el lockfile y verificar las pruebas en ambos sistemas.

@@ -2,7 +2,7 @@
 
 Acepta tanto Songs de stable como el almacén ``files`` de lazer. No consulta
 cuentas, puntuaciones ni bases de datos del juego. La dificultad se calcula con
-rosu-pp-py; ``length`` son segundos entre el primer objeto y el final del último.
+el motor de osu!lazer; ``length`` son segundos entre el primer objeto y el final del último.
 """
 
 from __future__ import annotations
@@ -14,6 +14,8 @@ import os
 from pathlib import Path
 import re
 from typing import Any, Callable
+
+from osu_coach.integrations.lazer_calculator import calculator
 
 
 MAX_MAP_BYTES = 8 * 1024 * 1024
@@ -162,26 +164,28 @@ def _attributes(content: bytes, metadata: dict[str, Any], rosu: Any,
     options = {"mods": mods} if mods is not None else {}
     if clock_rate is not None:
         clock_rate = float(clock_rate)
-        if not math.isfinite(clock_rate) or not 0.01 <= clock_rate <= 100:
+        if not math.isfinite(clock_rate) or not 0.5 <= clock_rate <= 2:
             raise InvalidBeatmap("La velocidad de reproducción es inválida.")
         options["clock_rate"] = clock_rate
-    difficulty = rosu.Difficulty(**options, lazer=lazer).calculate(beatmap)
+    difficulty = calculator.calculate(content, mods, lazer=lazer, clock_rate=clock_rate)
     builder = rosu.BeatmapAttributesBuilder(**options)
     builder.set_map(beatmap)
     attributes = builder.build()
     clock_rate = float(attributes.clock_rate)
     result = {
-        "stars": float(difficulty.stars),
+        "stars": float(difficulty["stars"]),
+        "calculator": difficulty["calculator"],
         "bpm": float(beatmap.bpm) * clock_rate,
         "length": int(round(metadata["length"] / clock_rate)),
-        "ar": float(attributes.ar),
-        "od": float(attributes.od),
-        "cs": float(attributes.cs),
-        "max_combo": int(difficulty.max_combo),
-        "object_count": int(beatmap.n_objects),
+        "ar": float(difficulty["ar"]),
+        "od": float(difficulty["od"]),
+        "cs": float(difficulty["cs"]),
+        "max_combo": int(difficulty["max_combo"]),
+        "object_count": int(difficulty["object_count"]),
         "mode": 0,
-        "aim": float(difficulty.aim) if difficulty.aim is not None else None,
-        "speed": float(difficulty.speed) if difficulty.speed is not None else None,
+        "aim": float(difficulty["aim"]),
+        "speed": float(difficulty["speed"]),
+        "reading": float(difficulty["reading"]),
         "clock_rate": clock_rate,
     }
     if any(isinstance(value, float) and not math.isfinite(value)

@@ -367,7 +367,7 @@ class QuestIntegrationTests(unittest.TestCase):
         self.assertEqual("1762724", before["quest_availability"][quest["id"]]["search_text"])
         local.update(title_romanized=romanized, artist_romanized="Will Stetson")
         app.save_json(self.coach.data / "catalog.json", {"root": self.coach.config["maps_path"],
-                                                       "maps": self.coach.catalog})
+                                                       "calculator": app.CALCULATOR_ID, "maps": self.coach.catalog})
         after = self.coach.state()
         search = after["quest_availability"][quest["id"]]
         self.assertTrue(search["installed"])
@@ -389,6 +389,52 @@ class QuestIntegrationTests(unittest.TestCase):
         self.assertEqual(board, reopened["quest_board"])
         self.assertEqual(search, reopened["quest_availability"][quest["id"]])
         self.assertEqual(stored_json, self.coach.db.execute("SELECT data FROM quest_boards WHERE id=?", (board["id"],)).fetchone()[0])
+
+    def test_updated_stars_do_not_rewrite_missions_attempts_or_progress(self):
+        board = self.initial_board()
+        quest = self.first_quest(board)
+        self.coach.add_play(self.attempt(quest, accuracy=80, misses=20, grade="B"))
+        before = self.coach.state()
+        tables = ("quest_boards", "plays", "quest_attempts", "coach_progress_points", "coach_rank_milestones")
+        stored = {table: self.coach.db.execute(f"SELECT * FROM {table}").fetchall() for table in tables}
+        local = next(m for m in self.coach.catalog if m["key"] == quest["map"]["key"])
+        local.update(stars=4.001641712836648, calculator=app.CALCULATOR_ID)
+        after = self.coach.state()
+        self.assertEqual({"stars": local["stars"], "calculator": app.CALCULATOR_ID},
+                         after["quest_availability"][quest["id"]]["difficulty"])
+        self.assertEqual(before["quest_board"], after["quest_board"])
+        self.assertEqual(stored, {table: self.coach.db.execute(f"SELECT * FROM {table}").fetchall() for table in tables})
+
+    def test_display_stars_use_adjusted_profile_and_exact_revision(self):
+        quest = self.first_quest(self.initial_board())
+        local = next(m for m in self.coach.catalog if m["key"] == quest["map"]["key"])
+        local.update(calculator=app.CALCULATOR_ID)
+        adjusted = deepcopy(self.coach.catalog)
+        current = next(m for m in adjusted if m["key"] == local["key"])
+        current["stars"] = 5.6
+        with patch.object(self.coach, "catalog_for", return_value=(adjusted, "")):
+            state = self.coach.state()
+        self.assertEqual(5.6, state["quest_availability"][quest["id"]]["difficulty"]["stars"])
+        current["key"] = "another-checksum"
+        with patch.object(self.coach, "catalog_for", return_value=(adjusted, "")):
+            state = self.coach.state()
+        self.assertIsNone(state["quest_availability"][quest["id"]]["difficulty"])
+
+    def test_unversioned_catalog_preserves_identity_but_disables_old_stars(self):
+        board = self.initial_board()
+        quest = self.first_quest(board)
+        app.save_json(self.coach.data / "catalog.json", {"root": self.coach.config["maps_path"],
+                                                       "maps": self.coach.catalog})
+        self.coach.close()
+        self.coach.db.close()
+        self.coach = app.Coach(self.args)
+        self.assertTrue(self.coach.catalog_stale)
+        self.assertTrue(all(m["stars"] is None for m in self.coach.catalog))
+        state = self.coach.state()
+        self.assertEqual(board, state["quest_board"])
+        self.assertTrue(state["quest_availability"][quest["id"]]["installed"])
+        self.assertTrue(state["quest_availability"][quest["id"]]["difficulty_pending"])
+        self.assertIsNone(state["quest_availability"][quest["id"]]["difficulty"])
 
     def test_remote_search_joins_exact_downloaded_difficulty_not_another_map_of_same_set(self):
         discovered = deepcopy(self.maps)

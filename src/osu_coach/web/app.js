@@ -1886,6 +1886,27 @@ function mapGoal(map, quest = null) {
   return goal;
 }
 function mapCard(map, quest = null, availability = null, automatic = false) {
+  if (numeric(availability?.difficulty?.stars)) {
+    const updated = availability.difficulty.stars;
+    const changed =
+      numeric(map.stars) && Math.abs(updated - map.stars) >= 0.005;
+    map = {
+      ...map,
+      ...availability.difficulty,
+      reason: changed
+        ? "Estrellas actualizadas con osu!lazer. Se conserva el objetivo de la misión, asignada con " +
+          format(map.stars) +
+          " ★. " +
+          (map.reason ? "Motivo original: " + map.reason : "")
+        : map.reason,
+    };
+  } else if (availability?.difficulty_pending) {
+    map = {
+      ...map,
+      stars: null,
+      reason: "Actualizando estrellas. El objetivo de esta misión se conserva.",
+    };
+  }
   const card = element("article", "map-card");
   const lookupValue = (key) => availability?.[key] ?? map[key];
   if (quest) {

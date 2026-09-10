@@ -18,15 +18,17 @@ El cálculo usa las partidas registradas por el entrenador. Tu ranking global, l
 
 ## Requisitos
 
-Para jugar y registrar partidas, la configuración preparada es **Windows con Python 3.11 o posterior**, osu! stable o lazer y tosu ejecutándose localmente. Python de 64 bits es la opción habitual.
+Para jugar y registrar partidas, la configuración preparada es **Windows x64 con Python 3.11 o posterior y Node.js 22 con npm**, osu! stable o lazer y tosu ejecutándose localmente. Python de 64 bits es la opción habitual.
 
-La dependencia fijada es `rosu-pp-py==4.0.2`, cuyo [paquete oficial requiere Python >=3.11](https://pypi.org/project/rosu-pp-py/4.0.2/). Cuando hay una distribución compilada para tu sistema, su instalación con pip no necesita Rust; otras plataformas pueden requerir compilar la biblioteca.
+Las estrellas se calculan localmente con el [motor nativo de osu!lazer utilizado por tosu](https://github.com/tosuapp/lazer-calculator), fijado en la versión 0.6.1-20260729-main.0. El inicio prepara esta dependencia en una carpeta local mediante npm; los mapas no se envían a un servidor.
 
-La demo y las pruebas pueden ejecutarse con Python sin tener osu! o tosu instalados. El lanzador `iniciar.cmd` es para Windows; en otros sistemas se usan los comandos de Python. La detección automática de carpetas está preparada para Windows.
+Para leer archivos y obtener su BPM también se usa `rosu-pp-py==4.0.2`, cuyo [paquete oficial requiere Python >=3.11](https://pypi.org/project/rosu-pp-py/4.0.2/). Cuando hay una distribución compilada para tu sistema, su instalación con pip no necesita Rust; otras plataformas pueden requerir compilar la biblioteca.
+
+La demo puede ejecutarse solo con Python. Las pruebas completas necesitan también Node.js y el motor de dificultad, sin tener osu! o tosu instalados. El motor nativo tiene distribuciones para Windows y Linux x64; macOS y ARM pueden usar la demo. El lanzador `iniciar.cmd` es para Windows; en otros sistemas se usan los comandos de Python. La detección automática de carpetas está preparada para Windows.
 
 ## Instalación
 
-1. Instalá [Python desde su sitio oficial](https://www.python.org/downloads/). En Windows, habilitá el acceso a Python desde la terminal o instalá su lanzador `py`.
+1. Instalá [Python desde su sitio oficial](https://www.python.org/downloads/). En Windows, habilitá el acceso a Python desde la terminal o instalá su lanzador `py`. Instalá también [Node.js con npm](https://nodejs.org/en/download) y abrí otra terminal.
 2. Descargá el código del repositorio con **Code → Download ZIP** y extraelo en una carpeta donde puedas guardar archivos. También podés usar Git:
 
    ```powershell
@@ -34,7 +36,7 @@ La demo y las pruebas pueden ejecutarse con Python sin tener osu! o tosu instala
    cd osu-coach
    ```
 
-3. En Windows, abrí `iniciar.cmd`. Crea un entorno `.venv`, instala este proyecto en modo editable con sus dependencias y abre el panel en [127.0.0.1:8765](http://127.0.0.1:8765/). La primera instalación necesita Internet.
+3. En Windows, abrí `iniciar.cmd`. Crea un entorno `.venv`, instala este proyecto en modo editable, prepara el motor de dificultad y abre el panel en [127.0.0.1:8765](http://127.0.0.1:8765/). La primera instalación necesita Internet.
 
 Para preparar el entorno manualmente:
 
@@ -175,7 +177,8 @@ Las consultas públicas de mapas y tags envían identificadores públicos de con
 - tosu debe observar la partida y el resultado. Una pantalla histórica al iniciar no cuenta como una partida nueva.
 - Si falta una fecha verificable, el panel puede pedirte confirmar el intento. Las transiciones muy rápidas pueden perderse entre lecturas.
 - El grado de stable depende también de los juicios; la precisión por sí sola no permite prometer una S. Los datos ausentes permanecen pendientes.
-- Las estrellas de tosu y las calculadas para el catálogo pueden variar según sus versiones.
+- El catálogo utiliza una versión fijada del cálculo de osu!lazer. Al actualizar ese motor, se descarta la caché de estrellas anterior y se recalcula la biblioteca. Las misiones conservan sus objetivos; las tarjetas muestran las estrellas actualizadas de la misma dificultad. Las partidas y los ascensos ya registrados se conservan. Una versión futura del juego puede volver a cambiar la fórmula.
+- Las dificultades aún no descargadas usan las estrellas publicadas por osu!; al importarlas se calculan localmente. La dificultad con mods se calcula cuando sus ajustes son compatibles y están disponibles.
 - Los criterios son heurísticas de práctica; todavía no constituyen un método de entrenamiento validado.
 
 ## Problemas frecuentes
@@ -184,6 +187,7 @@ Las consultas públicas de mapas y tags envían identificadores públicos de con
 | --- | --- |
 | Python no se encuentra o es demasiado antiguo | Instalá Python 3.11+ y abrí otra terminal. El lanzador prueba `py` y después `python`. |
 | Falla la instalación de rosu-pp-py | Revisá la versión y arquitectura de Python. Consultá la [instalación de la biblioteca](https://github.com/MaxOhn/rosu-pp-py#installing-rosu-pp-py). |
+| Falta Node.js o falla el motor de dificultad | Instalá Node.js con npm y abrí otra terminal. El primer inicio necesita Internet para preparar el motor. |
 | El panel espera a tosu | Abrí osu! y tosu; verificá su panel local y el puerto configurado. |
 | No hay mapas en la biblioteca | Elegí `files` o `Songs` con `--maps` y volvé a leer los mapas. |
 | Una dificultad importada sigue figurando como descargable | Pulsá **Volver a leer mapas** cuando termine la importación. |
@@ -196,16 +200,17 @@ El código está organizado en `src/osu_coach/`. La [guía de arquitectura](docs
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -e .
+.\.venv\Scripts\python.exe -m osu_coach.integrations.lazer_calculator --install
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-Las pruebas usan datos ficticios, carpetas temporales y respuestas públicas simuladas. Algunas pruebas de integración abren un servidor HTTP local temporal. No requieren osu!, tosu ni credenciales. El flujo de GitHub Actions instala el proyecto y ejecuta las pruebas en Windows y Linux con Python 3.11 y 3.12.
+Las pruebas usan datos ficticios, carpetas temporales y respuestas públicas simuladas. Algunas pruebas de integración abren un servidor HTTP local temporal. No requieren osu!, tosu ni credenciales. El flujo de GitHub Actions instala el proyecto y ejecuta las pruebas en Windows y Linux con Python 3.11 y 3.12, Node.js 22 y el motor fijado.
 
 Para contribuir, describí el comportamiento esperado y un caso reproducible con datos ficticios. Evitá adjuntar bases de datos, capturas con nombres personales o logs completos. La [guía de publicación](docs/PUBLICACION.md) detalla los archivos que forman parte del proyecto.
 
 ## Licencia y fuentes
 
-El código del coach se distribuye bajo [licencia MIT](LICENSE). Las dependencias y los programas externos conservan sus propias licencias; los mapas, canciones y replays no forman parte de esta distribución.
+El código del coach se distribuye bajo [licencia MIT](LICENSE). Los [componentes de terceros](THIRD_PARTY_NOTICES.md) y los programas externos conservan sus propias licencias; los mapas, canciones y replays no forman parte de esta distribución.
 
 Fuentes principales: [tosu](https://github.com/tosuapp/tosu), [rosu-pp-py](https://github.com/MaxOhn/rosu-pp-py), [almacenamiento de lazer](https://github.com/ppy/osu/wiki/User-file-storage), [tags de mapas](https://osu.ppy.sh/wiki/en/Beatmap/Beatmap_tags) y [grados de osu!](https://osu.ppy.sh/wiki/en/Gameplay/Grade).
 
@@ -226,4 +231,4 @@ Para comprobar las transformaciones del radar durante el desarrollo, con Node.js
 node --test tests/test_web_ui.mjs
 ```
 
-Node.js se utiliza en estas pruebas; el usuario del coach solo necesita Python y su navegador.
+Node.js ejecuta tanto estas pruebas como el motor local de dificultad. Después de preparar el motor, el cálculo de estrellas funciona sin conexión.

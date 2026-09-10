@@ -37,7 +37,7 @@ include = ["osu_coach", "osu_coach.*"]
 namespaces = false
 
 [tool.setuptools.package-data]
-osu_coach = ["web/*.html", "web/*.css", "web/*.js"]
+osu_coach = ["web/*.html", "web/*.css", "web/*.js", "calculator/*.json", "calculator/*.cjs"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}

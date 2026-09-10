@@ -21,7 +21,11 @@ osu-coach/
 │       ├── integrations/    Lectura de tosu y fuentes públicas
 │       ├── storage/         Persistencia del estado y cachés
 │       └── web/
-│           └── index.html   Panel incluido en el paquete
+│           ├── index.html   Estructura y vistas del panel
+│           ├── styles.css   Componentes y estados compartidos
+│           ├── compact.css  Diseño compacto y adaptación a pantallas
+│           ├── app.js       Renderizado, navegación y acciones
+│           └── profile-radar.js  Transformación visual y radar accesible
 ├── tests/                   Pruebas con datos ficticios
 ├── docs/
 └── .github/workflows/       Comprobaciones automáticas
@@ -37,7 +41,7 @@ osu-coach/
 | `beatmaps/` | Lee el catálogo y compara la identidad de cada dificultad. También prepara las búsquedas que se copian al juego. |
 | `integrations/` | Interpreta la telemetría de tosu y obtiene metadatos de páginas públicas. |
 | `storage/` | Conserva misiones, progreso y cachés. Controla la continuidad del estado y de las búsquedas. |
-| `web/index.html` | Presenta la información del entrenador y envía las acciones del usuario a su API local. |
+| `web/` | Presenta las cinco vistas y envía acciones a la API local. El radar transforma datos únicamente para mostrarlos; las reglas de entrenamiento siguen en `core/`. |
 
 Las reglas comparten los datos normalizados que coordina la aplicación. Los conectores externos y el almacenamiento tienen módulos separados para poder probar el entrenamiento con respuestas simuladas.
 
@@ -52,7 +56,7 @@ python -m osu_coach --demo --port 8766
 
 `pyproject.toml` define el paquete `osu-coach` y el comando `osu-coach`. El nombre que importa Python es `osu_coach`. La instalación editable enlaza el entorno con `src/`; una instalación convencional copia el paquete al entorno.
 
-Las dependencias se leen de `requirements.txt`, que mantiene sus versiones fijadas. El HTML se declara como dato del paquete para incluirlo también en una distribución wheel. La configuración sigue las [reglas de pyproject de PyPA](https://packaging.python.org/en/latest/guides/writing-pyproject-toml/) y el [soporte de archivos de setuptools](https://setuptools.pypa.io/en/latest/userguide/datafiles.html).
+Las dependencias se leen de `requirements.txt`, que mantiene sus versiones fijadas. Los archivos HTML, CSS y JavaScript se declaran como datos del paquete para incluirlo también en una distribución wheel. La configuración sigue las [reglas de pyproject de PyPA](https://packaging.python.org/en/latest/guides/writing-pyproject-toml/) y el [soporte de archivos de setuptools](https://setuptools.pypa.io/en/latest/userguide/datafiles.html).
 
 ## Código y archivos de ejecución
 
@@ -68,3 +72,5 @@ El programa busca el panel dentro del paquete instalado. Los datos propios del u
 Estas rutas se resuelven desde la carpeta donde se inicia el programa. `iniciar.cmd` cambia primero a la raíz del repositorio, manteniendo los datos existentes allí. Al ejecutar `python -m osu_coach` desde otra carpeta, esa carpeta pasa a ser la base; `--data-dir` permite fijar expresamente dónde guardar el entrenamiento.
 
 El paquete distribuye código y el panel. Las carpetas de ejecución quedan excluidas del repositorio y de la instalación. Para actualizar desde la estructura anterior, conservá `data/` y la copia de tosu que hayas instalado, y ejecutá el lanzador actualizado o repetí `python -m pip install -e .` desde la raíz.
+
+El servidor publica únicamente los cuatro recursos enumerados en `/assets/`. El navegador carga módulos nativos, sin compilación ni dependencias de frontend para usar el coach. Los criterios de presentación se explican en [Diseño del panel](DISENO.md).

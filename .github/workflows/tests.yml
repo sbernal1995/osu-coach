@@ -34,3 +34,8 @@ jobs:
         run: python -m osu_coach --help
       - name: Run offline tests
         run: python -m unittest discover -s tests -v
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - name: Check radar presentation rules
+        run: node --test tests/test_web_ui.mjs

@@ -117,7 +117,7 @@ El servidor de tosu debe ser local. Las carpetas y la conexión se eligen median
 
 ## Configurar el entrenamiento
 
-En el panel, abrí **Configuración**. Cada criterio muestra su explicación, valor actual y límites admitidos. Ajustá los valores y pulsá **Guardar ajustes**. **Restaurar valores iniciales** recupera la configuración de partida.
+En el panel, abrí la vista **Ajustes** o el enlace **Configuración**. Cada criterio muestra su explicación, valor actual y límites admitidos. Ajustá los valores y pulsá **Guardar ajustes**. **Restaurar valores iniciales** recupera la configuración de partida.
 
 Los controles permiten adaptar la memoria de resultados, la evidencia necesaria para el perfil y los tags, la progresión y los filtros de descubrimiento. Los valores vigentes que muestra el panel son la referencia; los ejemplos de esta guía describen la configuración inicial.
 
@@ -202,3 +202,22 @@ Para contribuir, describí el comportamiento esperado y un caso reproducible con
 El código del coach se distribuye bajo [licencia MIT](LICENSE). Las dependencias y los programas externos conservan sus propias licencias; los mapas, canciones y replays no forman parte de esta distribución.
 
 Fuentes principales: [tosu](https://github.com/tosuapp/tosu), [rosu-pp-py](https://github.com/MaxOhn/rosu-pp-py), [almacenamiento de lazer](https://github.com/ppy/osu/wiki/User-file-storage), [tags de mapas](https://osu.ppy.sh/wiki/en/Beatmap/Beatmap_tags) y [grados de osu!](https://osu.ppy.sh/wiki/en/Gameplay/Grade).
+
+## Panel compacto y perfil visual
+
+La navegación separa **Entrenar**, **Perfil**, **Progreso**, **Historial** y **Ajustes**. Las misiones muestran sus objetivos principales y conservan la evaluación completa, los tags y las alternativas de búsqueda en **Objetivos y detalles**. En pantallas pequeñas, **Tu sesión** despliega la referencia y la calibración.
+
+El perfil incluye una telaraña con dos lecturas:
+
+- **Control general:** precisión, control de misses, combo, completar mapas y consistencia, respecto de las referencias del coach. El borde significa alcanzar la referencia; los valores reales se conservan debajo.
+- **Por tipo de mapa:** precisión en mapas comparables con siete tags de habilidades, en un orden fijo. Los puntos huecos señalan evidencia inicial y los ejes sin datos quedan sin punto.
+
+La telaraña solo representa resultados existentes. No añade puntos ni cambia recomendaciones, metas o rangos. Los umbrales configurados de precisión, misses y combo se reflejan en el gráfico. [Criterios de diseño y lectura de las escalas](docs/DISENO.md).
+
+Para comprobar las transformaciones del radar durante el desarrollo, con Node.js 22:
+
+```console
+node --test tests/test_web_ui.mjs
+```
+
+Node.js se utiliza en estas pruebas; el usuario del coach solo necesita Python y su navegador.

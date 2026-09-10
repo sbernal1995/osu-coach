@@ -584,6 +584,12 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, self.server.coach.state())
         if path == "/":
             return self.send(200, (PACKAGE_ROOT / "web" / "index.html").read_bytes(), "text/html; charset=utf-8")
+        # Explicit allowlist: runtime files and arbitrary filesystem paths stay private.
+        assets = {"styles.css": "text/css", "compact.css": "text/css",
+                  "app.js": "text/javascript", "profile-radar.js": "text/javascript"}
+        name = path.removeprefix("/assets/") if path.startswith("/assets/") else None
+        if name in assets:
+            return self.send(200, (PACKAGE_ROOT / "web" / name).read_bytes(), assets[name] + "; charset=utf-8")
         return self.send(404, {"error": "Ruta desconocida."})
 
     def do_POST(self):

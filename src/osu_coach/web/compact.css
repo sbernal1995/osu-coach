@@ -1,0 +1,1621 @@
+/* Compact coach: layout, navigation and shared component tokens. */
+:root {
+  --bg: #121118;
+  --panel: #1b1922;
+  --panel-raised: #24212d;
+  --line: #34303f;
+  --muted: #b3adbf;
+  --text: #f5f2f8;
+  --pink: #ff82ad;
+  --green: #a3e0cf;
+  --radius: 8px;
+}
+body {
+  font-size: 14px;
+  line-height: 1.5;
+}
+.shell {
+  max-width: 1600px;
+  padding: 0 28px;
+}
+header {
+  height: 66px;
+  gap: 24px;
+}
+.brand {
+  font-size: 20px;
+  gap: 9px;
+  white-space: nowrap;
+}
+.logo {
+  height: 36px;
+  width: 36px;
+  font-size: 13px;
+  box-shadow: none;
+}
+.app-tabs {
+  display: flex;
+  align-self: stretch;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+.app-tabs button {
+  font: inherit;
+  font-size: 14px;
+  color: var(--muted);
+  padding: 0 16px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  min-height: 40px;
+}
+.app-tabs button[aria-selected="true"] {
+  color: var(--pink);
+  border-bottom-color: var(--pink);
+}
+.app-tabs button:hover {
+  color: var(--text);
+  background: #ffffff04;
+}
+.connection {
+  max-width: 310px;
+  font-size: 12px;
+}
+.connection span:last-child {
+  max-width: none;
+}
+main {
+  padding: 18px 0 22px;
+}
+.intro {
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+.intro h1 {
+  font-size: 19px;
+  line-height: 1.2;
+  letter-spacing: -0.35px;
+}
+.intro p {
+  font-size: 12px;
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+.intro-tools {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+.mode-tag {
+  padding: 3px 8px;
+  font-size: 11px;
+  border-radius: 5px;
+}
+.mode-tag:before {
+  height: 7px;
+  width: 7px;
+}
+.settings-open {
+  font-size: 12px;
+}
+.dashboard {
+  grid-template-columns: 1fr 1.4fr 0.9fr;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  margin-bottom: 22px;
+}
+.dashboard .panel {
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-radius: 0;
+  padding: 14px 18px;
+  background: none;
+  min-width: 0;
+}
+.dashboard .panel:last-child {
+  border: 0;
+}
+.panel-label {
+  font-size: 12px;
+}
+.level-readout {
+  margin: 5px 0 2px;
+}
+.level-value {
+  font-size: 32px;
+  letter-spacing: -0.8px;
+}
+.level-unit {
+  font-size: 13px;
+}
+.profile-label {
+  border: 0;
+  padding: 0;
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.focus-value {
+  font-size: 18px;
+  margin: 5px 0 4px;
+  line-height: 1.35;
+}
+.metrics-line {
+  font-size: 12px;
+  margin-top: 8px;
+}
+.small-text {
+  font-size: 12px;
+}
+.calibration-count {
+  font-size: 18px;
+}
+.progress-track {
+  margin: 10px 0;
+  height: 4px;
+}
+.progress-fill {
+  background: var(--pink);
+}
+.calibration-panel .text-button {
+  margin-top: 8px;
+}
+.summary-detail {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.summary-detail summary {
+  cursor: pointer;
+  color: var(--muted);
+  width: fit-content;
+  min-height: 24px;
+}
+.summary-detail[open] summary {
+  margin-bottom: 7px;
+}
+.summary-detail .small-text {
+  margin: 4px 0;
+}
+.summary-detail + .metrics-line {
+  margin-top: 5px;
+}
+h2 {
+  font-size: 21px;
+  letter-spacing: -0.45px;
+}
+h3 {
+  font-size: 15px;
+}
+.section-heading {
+  margin-bottom: 12px;
+  gap: 12px;
+}
+.section-heading p {
+  font-size: 12px;
+  margin-top: 3px;
+}
+.section-heading > div {
+  min-width: 0;
+}
+.catalog-meta {
+  font-size: 11px;
+}
+.catalog-meta .subtle-button {
+  margin: 5px 0 0 8px;
+}
+.subtle-button {
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  min-height: 32px;
+}
+.text-button {
+  font-size: 12px;
+  min-height: 28px;
+}
+.app-view {
+  outline-offset: 5px;
+}
+.training-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 22px;
+  align-items: start;
+}
+.training-main {
+  min-width: 0;
+}
+.training-sidebar {
+  min-width: 0;
+}
+.quick-profile {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+.radar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.radar-head h2 {
+  font-size: 18px;
+}
+.radar-head .text-button {
+  font-size: 11px;
+  text-decoration: none;
+}
+.radar-host {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+}
+.radar-host svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.radar-host svg text {
+  font-family: inherit;
+}
+.radar-caption {
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+  margin-top: -8px;
+}
+.radar-grid {
+  fill: none;
+  stroke: #514b5d;
+  stroke-width: 1;
+}
+.radar-axis {
+  stroke: #514b5d;
+  stroke-width: 1;
+}
+.radar-fill {
+  fill: #a3e0cf16;
+  stroke: none;
+}
+.radar-edge {
+  stroke: var(--green);
+  stroke-width: 2;
+  fill: none;
+  stroke-linejoin: round;
+}
+.radar-edge[data-provisional="true"] {
+  stroke-dasharray: 4 4;
+  opacity: 0.8;
+}
+.radar-point {
+  fill: var(--green);
+  stroke: var(--green);
+  stroke-width: 2;
+}
+.radar-point[data-provisional="true"] {
+  fill: var(--panel);
+}
+.radar-label {
+  fill: var(--text);
+  font-size: 12px;
+}
+.radar-guide {
+  fill: var(--muted);
+  font-size: 10px;
+}
+.radar-empty {
+  padding: 16px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.quick-findings {
+  margin-top: 20px;
+}
+.quick-findings h3,
+.quick-focus h3 {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+.quick-findings p {
+  color: var(--green);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.quick-focus {
+  margin-top: 18px;
+}
+.quick-focus p {
+  color: var(--pink);
+  font-size: 14px;
+}
+.quick-rank {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px;
+  background: transparent;
+  color: var(--text);
+  margin-top: 22px;
+}
+.quick-rank span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.quick-rank strong {
+  font-size: 19px;
+  font-weight: 600;
+}
+.quick-rank:hover {
+  border-color: var(--pink);
+}
+.quick-profile-note {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 16px;
+}
+.session-guide {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  padding: 0;
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.session-guide > summary {
+  cursor: pointer;
+  min-height: 28px;
+  color: var(--muted);
+}
+.session-guide > p {
+  margin: 8px 0;
+}
+.session-guide-more {
+  margin-top: 8px;
+}
+.quest-overview {
+  padding: 0 0 12px;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.quest-overview-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: start;
+}
+.quest-overview-top > div:first-child {
+  min-width: 0;
+  flex: 1;
+}
+.quest-progress-title {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+.quest-progress-title b {
+  font-size: 18px;
+}
+.quest-progress-track {
+  max-width: 200px;
+  height: 3px;
+  margin-top: 6px;
+}
+.quest-completed-total {
+  font-size: 11px;
+  margin-top: 4px;
+}
+.quest-board-note,
+.quest-board-meta {
+  font-size: 12px;
+  margin-top: 7px;
+  line-height: 1.5;
+}
+.quest-explainer {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.quest-explainer summary {
+  cursor: pointer;
+  min-height: 24px;
+}
+.quest-board-controls {
+  max-width: 235px;
+}
+.quest-new-button {
+  font-size: 12px;
+  padding: 7px 10px;
+  border-radius: 6px;
+}
+.quest-replace-note {
+  font-size: 11px;
+  line-height: 1.45;
+  margin-top: 5px;
+}
+.quest-stage-count {
+  font-size: 11px;
+  margin-bottom: 10px;
+}
+.stage-top {
+  gap: 8px;
+  margin: 0 0 6px;
+}
+.stage-top h3 {
+  font-size: 14px;
+}
+.step-number {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+}
+.stage-description {
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0 0 6px;
+}
+.progression {
+  gap: 12px;
+}
+.map-card {
+  padding: 12px;
+  border-radius: 7px;
+  margin-bottom: 10px;
+  overflow: visible;
+}
+.map-card:before {
+  left: 12px;
+  width: 25px;
+}
+.map-heading {
+  gap: 7px;
+}
+.map-heading > div {
+  min-width: 0;
+}
+.song-title {
+  font-size: 15px;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+.stars {
+  font-size: 13px;
+}
+.artist {
+  font-size: 11px;
+  margin-top: 3px;
+}
+.version {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  margin-top: 5px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #dfd8e8;
+}
+.map-creator {
+  font-size: 11px;
+  margin-top: 3px;
+}
+.map-stats {
+  font-size: 11px;
+  gap: 4px 9px;
+  margin: 7px 0;
+}
+.map-tags {
+  gap: 4px;
+  margin-top: 6px;
+}
+.map-tag {
+  font-size: 10px;
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+.map-tags-note {
+  font-size: 11px;
+}
+.source-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  margin-top: 5px;
+  border-radius: 4px;
+}
+.quest-card-top {
+  padding-bottom: 7px;
+  margin-bottom: 7px;
+  gap: 5px;
+  font-size: 10px;
+}
+.quest-status,
+.quest-attempts {
+  font-size: 10px;
+}
+.quest-assigned-stage {
+  font-size: 10px;
+  line-height: 1.4;
+  margin: 0 0 7px;
+}
+.quest-assigned-stage strong {
+  font-weight: 500;
+}
+.map-actions {
+  gap: 6px;
+  margin-top: 10px;
+}
+.copy-button,
+.map-link {
+  font-size: 11px;
+  min-height: 34px;
+  padding: 7px 6px;
+  border-radius: 5px;
+}
+.copy-button {
+  background: var(--pink);
+  color: #25131d;
+  border-color: var(--pink);
+  font-weight: 600;
+}
+.copy-button:hover {
+  background: #ffa4c4;
+}
+.map-link {
+  color: var(--text);
+  white-space: normal;
+  text-align: center;
+}
+.compact-goal {
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: #eae4f0;
+  line-height: 1.65;
+}
+.compact-goal strong {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 650;
+}
+.compact-goal .goal-numbers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 9px;
+}
+.goal-numbers span {
+  white-space: nowrap;
+}
+.compact-goal .goal-attempt {
+  color: var(--muted);
+  margin-top: 3px;
+  font-size: 11px;
+}
+.map-details {
+  border-top: 1px solid var(--line);
+  margin-top: 10px;
+  padding-top: 5px;
+  font-size: 12px;
+}
+.map-details > summary {
+  color: var(--muted);
+  cursor: pointer;
+  min-height: 28px;
+  padding: 3px 0;
+}
+.map-details[open] > summary {
+  color: var(--pink);
+  margin-bottom: 7px;
+}
+.map-note {
+  font-size: 12px;
+}
+.goal {
+  padding: 10px;
+  margin-top: 10px;
+  border-radius: 5px;
+}
+.quest-checks {
+  gap: 6px;
+}
+.quest-check {
+  padding: 4px 0;
+}
+.quest-check-head,
+.quest-check-target {
+  font-size: 12px;
+}
+.goal-label {
+  font-size: 10px;
+  letter-spacing: 0.7px;
+}
+.map-search-hint,
+.map-search-alternatives,
+.map-popularity {
+  font-size: 11px;
+  line-height: 1.5;
+}
+.map-popularity {
+  margin: 7px 0;
+}
+.map-search-options {
+  gap: 8px;
+}
+.map-search-query {
+  overflow-wrap: anywhere;
+}
+.map-search-alternatives {
+  margin-top: 8px;
+}
+.map-search-alternatives summary,
+.goal-conditions summary {
+  min-height: 26px;
+  cursor: pointer;
+}
+.discovery-bar {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  gap: 12px;
+  border-radius: 6px;
+}
+.discovery-bar h3 {
+  font-size: 14px;
+}
+.discovery-bar p {
+  font-size: 12px;
+  margin-top: 5px;
+}
+.discovery-details {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.discovery-details summary {
+  min-height: 24px;
+  cursor: pointer;
+}
+.empty-stage {
+  padding: 16px;
+  font-size: 12px;
+  border-radius: 7px;
+  min-height: 120px;
+}
+.player-profile {
+  margin-bottom: 20px;
+}
+.player-profile-summary {
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+.player-profile-evidence {
+  font-size: 12px;
+  margin-bottom: 16px;
+}
+.profile-layout {
+  display: grid;
+  grid-template-columns: minmax(340px, 0.9fr) minmax(0, 1.4fr);
+  gap: 24px;
+  align-items: start;
+}
+.profile-analysis {
+  min-width: 0;
+}
+.radar-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 16px;
+}
+.radar-scale {
+  font-size: 12px;
+  color: var(--muted);
+}
+.radar-modes {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+  margin-top: 12px;
+  gap: 16px;
+}
+.radar-modes button {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  padding: 7px 0;
+  min-height: 32px;
+}
+.radar-modes button[aria-pressed="true"] {
+  color: var(--pink);
+  border-bottom-color: var(--pink);
+}
+.radar-description {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+.radar-values {
+  display: flex;
+  flex-direction: column;
+}
+.radar-value {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1px 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+.radar-value strong {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.radar-value p {
+  grid-column: 1/-1;
+  color: var(--muted);
+  font-size: 11px;
+}
+.radar-value[data-status="strength"] strong {
+  color: var(--green);
+}
+.radar-value[data-status="practice"] strong {
+  color: var(--pink);
+}
+.radar-method {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 10px;
+}
+.radar-method summary {
+  min-height: 28px;
+  cursor: pointer;
+}
+.radar-method p {
+  margin: 8px 0;
+}
+.player-findings {
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.player-finding-group {
+  padding: 12px;
+  border-radius: 6px;
+}
+.player-finding-group h3 {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+.player-finding {
+  padding: 9px 0;
+}
+.player-finding-title {
+  font-size: 13px;
+}
+.player-finding p {
+  font-size: 12px;
+  margin-top: 5px;
+}
+.player-finding-confidence {
+  font-size: 10px;
+}
+.player-plan {
+  padding: 14px;
+  border-radius: 6px;
+  margin: 14px 0;
+}
+.player-plan h3 {
+  font-size: 14px;
+}
+.player-plan-reasons,
+.player-priority p,
+.player-limits {
+  font-size: 12px;
+}
+.player-priorities {
+  gap: 10px;
+}
+.player-priority {
+  padding: 10px;
+}
+.player-details {
+  margin-top: 18px;
+  padding-top: 10px;
+}
+.player-observations {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.player-observation {
+  padding: 12px;
+  border-radius: 6px;
+}
+.player-stats-note {
+  font-size: 12px;
+}
+.tag-section {
+  margin: 24px 0 0;
+}
+.tag-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.tag-card {
+  padding: 12px;
+  border-radius: 6px;
+}
+.tag-card h3 {
+  font-size: 14px;
+}
+.tag-card-top {
+  margin-bottom: 6px;
+}
+.tag-message {
+  font-size: 12px;
+}
+.tag-sync-status {
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+.tag-summary {
+  margin-bottom: 12px;
+}
+.tag-method {
+  font-size: 12px;
+}
+.coach-progress-section {
+  margin: 0;
+}
+.coach-progress-box {
+  padding: 18px;
+  border-radius: 8px;
+}
+.coach-earned-rank {
+  font-size: 26px;
+}
+.coach-rank-overview {
+  gap: 24px;
+}
+.coach-reference-metrics {
+  padding-top: 14px;
+  margin-top: 16px;
+}
+.coach-metric-value {
+  font-size: 18px;
+}
+.coach-chart-wrap {
+  margin-top: 16px;
+}
+.coach-progress-details {
+  margin-top: 16px;
+}
+.help {
+  margin-top: 20px;
+  padding: 14px 0;
+  font-size: 13px;
+}
+.help p {
+  max-width: 100%;
+  line-height: 1.65;
+}
+.recent-section {
+  margin-top: 0;
+}
+.history-box {
+  border-radius: 8px;
+}
+th,
+td {
+  padding: 10px 14px;
+}
+table {
+  font-size: 13px;
+}
+th {
+  font-size: 12px;
+}
+.achievement-section {
+  margin-top: 24px;
+}
+.achievement-section h2 {
+  margin-bottom: 12px;
+}
+.achievement-section details {
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.achievement-section summary {
+  font-size: 13px;
+  cursor: pointer;
+  min-height: 28px;
+}
+.quest-achievement-item {
+  padding: 12px;
+}
+.settings-section {
+  margin: 0;
+}
+.settings-panel {
+  border-radius: 8px;
+  padding: 16px;
+}
+.settings-panel > summary {
+  font-size: 21px;
+}
+.settings-summary-note {
+  font-size: 12px;
+}
+.settings-group {
+  border-radius: 6px;
+  padding: 16px;
+}
+.settings-field input {
+  min-height: 36px;
+}
+.settings-intro {
+  font-size: 13px;
+}
+.settings-groups {
+  gap: 12px;
+}
+.settings-actions {
+  gap: 12px;
+}
+.pending-section {
+  margin-bottom: 18px;
+}
+.pending-item {
+  padding: 12px 16px;
+}
+.warnings {
+  margin: 0 0 16px;
+}
+.demo-banner {
+  padding: 10px 14px;
+  margin-top: 14px;
+  font-size: 12px;
+}
+.initial-error,
+.closed-banner {
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+footer {
+  padding: 14px 0 20px;
+  font-size: 11px;
+  border-top: 1px solid var(--line);
+  margin-top: 16px;
+  color: var(--muted);
+}
+.stop-button {
+  min-height: 28px;
+  color: var(--muted);
+}
+.skip-link {
+  position: fixed;
+  left: 16px;
+  top: -100px;
+  padding: 10px 16px;
+  z-index: 30;
+  background: var(--pink);
+  color: #25131d;
+  border-radius: 6px;
+}
+.skip-link:focus {
+  top: 10px;
+}
+.app-view:focus {
+  outline: none;
+}
+.app-view:focus-visible {
+  outline: 2px solid var(--pink);
+}
+@media (min-width: 1600px) {
+  .training-layout {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+  .map-card {
+    padding: 14px;
+  }
+}
+@media (max-width: 1150px) {
+  .shell {
+    padding: 0 20px;
+  }
+  header {
+    gap: 15px;
+  }
+  .app-tabs {
+    gap: 0;
+  }
+  .app-tabs button {
+    padding: 0 11px;
+  }
+  .connection {
+    max-width: 220px;
+  }
+  .training-layout {
+    grid-template-columns: minmax(0, 1fr) 250px;
+    gap: 16px;
+  }
+  .progression {
+    grid-template-columns: 1fr;
+  }
+  .stage {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 12px;
+  }
+  .stage-top,
+  .stage-description,
+  .quest-stage-count,
+  .stage > .automatic-search-notice,
+  .stage > .empty-stage {
+    grid-column: 1/-1;
+  }
+  .quick-profile {
+    padding: 12px;
+  }
+  .radar-head {
+    flex-wrap: wrap;
+  }
+  .player-findings {
+    grid-template-columns: 1fr;
+  }
+  .profile-layout {
+    grid-template-columns: minmax(300px, 1fr) minmax(0, 1.1fr);
+  }
+}
+@media (max-width: 800px) {
+  header {
+    height: auto;
+    min-height: 66px;
+    flex-wrap: wrap;
+    gap: 0 12px;
+    padding-top: 12px;
+  }
+  .brand {
+    order: 0;
+  }
+  .connection {
+    order: 1;
+    margin-left: auto;
+    max-width: 65%;
+    font-size: 11px;
+  }
+  .app-tabs {
+    order: 2;
+    flex-basis: 100%;
+    overflow-x: auto;
+    margin-top: 9px;
+  }
+  .app-tabs button {
+    min-height: 43px;
+    flex: 1;
+    padding: 0 10px;
+  }
+  .shell {
+    padding: 0 16px;
+  }
+  .intro p {
+    max-width: 420px;
+  }
+  .dashboard {
+    grid-template-columns: 1fr 1.5fr;
+  }
+  .dashboard .panel:nth-child(2) {
+    border: 0;
+  }
+  .dashboard .panel:last-child {
+    grid-column: 1/-1;
+    border-top: 1px solid var(--line);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 16px;
+  }
+  .calibration-head {
+    grid-row: 1;
+  }
+  .calibration-panel .progress-track {
+    grid-column: 2;
+    margin: 12px 0;
+  }
+  .calibration-panel .summary-detail {
+    grid-column: 1/-1;
+  }
+  .training-layout {
+    grid-template-columns: 1fr;
+  }
+  .training-sidebar {
+    grid-row: 2;
+  }
+  .quick-profile {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 0 20px;
+  }
+  .quick-profile > .radar-head {
+    grid-column: 1/-1;
+  }
+  .quick-profile > .radar-host {
+    grid-row: 2/6;
+  }
+  .quick-profile > .radar-caption {
+    grid-column: 1;
+    grid-row: 6;
+  }
+  .quick-findings,
+  .quick-focus {
+    margin-top: 12px;
+  }
+  .quick-rank {
+    margin-top: 12px;
+  }
+  .quick-profile-note {
+    margin-top: 10px;
+  }
+  .profile-layout {
+    grid-template-columns: 1fr;
+  }
+  .radar-panel {
+    max-width: none;
+  }
+  .radar-panel .radar-host {
+    max-width: 390px;
+  }
+  .player-findings {
+    grid-template-columns: 1fr 1fr;
+  }
+  .player-observations,
+  .tag-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .coach-reference-metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .section-heading {
+    align-items: flex-start;
+  }
+  .catalog-meta {
+    max-width: 160px;
+  }
+  .catalog-meta .subtle-button {
+    margin-left: 0;
+  }
+  .settings-group-grid {
+    grid-template-columns: 1fr;
+  }
+  .history-box {
+    max-width: 100%;
+  }
+  .history-box:focus-visible {
+    outline: 2px solid var(--pink);
+  }
+}
+@media (max-width: 520px) {
+  .shell {
+    padding: 0 12px;
+  }
+  .intro {
+    align-items: flex-start;
+  }
+  .intro h1 {
+    font-size: 18px;
+  }
+  .intro p {
+    max-width: 245px;
+    font-size: 12px;
+  }
+  .intro-tools {
+    flex-direction: column;
+    gap: 3px;
+    align-items: flex-end;
+  }
+  .mode-tag {
+    font-size: 10px;
+  }
+  .dashboard {
+    grid-template-columns: 1fr;
+  }
+  .dashboard .panel {
+    padding: 12px 14px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .dashboard .panel:nth-child(2) {
+    border-bottom: 1px solid var(--line);
+  }
+  .dashboard .panel:last-child {
+    border: 0;
+  }
+  .level-panel {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    column-gap: 12px;
+  }
+  .level-readout {
+    grid-row: 1/3;
+    grid-column: 2;
+    margin: 0;
+  }
+  .level-value {
+    font-size: 30px;
+  }
+  .level-unit {
+    font-size: 11px;
+  }
+  .level-panel .summary-detail {
+    grid-column: 1/-1;
+    grid-row: 3;
+  }
+  .level-panel .profile-label {
+    grid-column: 1;
+    margin-top: 3px;
+  }
+  .focus-value {
+    font-size: 16px;
+  }
+  .section-heading h2 {
+    font-size: 20px;
+  }
+  .stage {
+    display: block;
+  }
+  .quest-overview-top {
+    gap: 12px;
+  }
+  .quest-board-controls {
+    max-width: 170px;
+  }
+  .quest-new-button {
+    white-space: normal;
+    font-size: 11px;
+  }
+  .quest-replace-note {
+    font-size: 10px;
+  }
+  .quest-progress-title b {
+    font-size: 17px;
+  }
+  .quest-progress-title {
+    font-size: 11px;
+  }
+  .progression {
+    gap: 16px;
+  }
+  .map-card {
+    padding: 14px;
+  }
+  .song-title {
+    font-size: 16px;
+  }
+  .copy-button,
+  .map-link {
+    font-size: 12px;
+    min-height: 38px;
+  }
+  .map-actions {
+    gap: 8px;
+  }
+  .map-stats {
+    font-size: 12px;
+  }
+  .quick-profile {
+    display: block;
+    padding: 16px;
+  }
+  .quick-profile .radar-host {
+    max-width: 310px;
+  }
+  .quick-profile .radar-caption {
+    margin-top: -8px;
+  }
+  .quick-findings,
+  .quick-focus {
+    margin-top: 18px;
+  }
+  .quick-rank {
+    margin-top: 18px;
+  }
+  .profile-layout {
+    gap: 16px;
+  }
+  .player-findings,
+  .player-observations,
+  .tag-grid {
+    grid-template-columns: 1fr;
+  }
+  .player-finding-head {
+    flex-wrap: wrap;
+  }
+  .radar-panel {
+    padding: 12px;
+  }
+  .radar-head h3 {
+    font-size: 14px;
+  }
+  .radar-description {
+    font-size: 12px;
+  }
+  .radar-value {
+    font-size: 12px;
+  }
+  .coach-rank-overview {
+    grid-template-columns: 1fr;
+  }
+  .coach-progress-box {
+    padding: 14px;
+  }
+  .coach-earned-rank {
+    font-size: 23px;
+  }
+  .coach-reference-metrics {
+    gap: 14px;
+  }
+  .coach-metric-label {
+    font-size: 11px;
+  }
+  .coach-progress-details {
+    display: block;
+  }
+  .coach-progress-details details + details {
+    margin-top: 12px;
+  }
+  .discovery-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .discovery-bar button {
+    align-self: flex-start;
+  }
+  .pending-item {
+    display: block;
+  }
+  .pending-actions {
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .settings-group {
+    padding: 12px;
+  }
+  .settings-summary-note {
+    display: block;
+    margin-top: 5px;
+  }
+  .settings-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .footer-tools {
+    justify-content: flex-start;
+    gap: 8px;
+  }
+  .demo-banner {
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+/* Keep stage explanations and renewal help one click away. */
+.stage-guide {
+  margin: 0 0 8px;
+  font-size: 11px;
+  color: var(--muted);
+  grid-column: 1/-1;
+}
+.stage-guide summary {
+  cursor: pointer;
+  min-height: 24px;
+}
+.stage-guide[open] .stage-description {
+  margin-top: 5px;
+}
+.quest-board-controls {
+  max-width: 235px;
+}
+.quest-overview-top {
+  align-items: center;
+}
+.dashboard .panel {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+.quest-progress-title {
+  margin: 0;
+}
+.quest-explainer .quest-replace-note {
+  font-size: 12px;
+}
+.goal-complete {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+}
+.radar-grid {
+  stroke: #756d83;
+}
+.radar-axis {
+  stroke: #756d83;
+}
+.tag-evidence[title] {
+  cursor: help;
+}
+.overview-panel > summary {
+  display: none;
+}
+.overview-panel {
+  margin-bottom: 22px;
+}
+.overview-panel .dashboard {
+  margin-bottom: 0;
+}
+.intro {
+  flex-direction: row;
+}
+.radar-values .radar-value strong {
+  white-space: normal;
+  text-align: right;
+}
+@media (max-width: 800px) {
+  .overview-panel {
+    margin-bottom: 20px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--panel);
+  }
+  .overview-panel > summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    min-height: 44px;
+  }
+  .overview-panel > summary:after {
+    content: "⌄";
+    font-size: 17px;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+  .overview-panel[open] > summary:after {
+    content: "⌃";
+  }
+  .overview-panel > summary strong {
+    color: var(--text);
+    font-weight: 500;
+    font-size: 12px;
+    min-width: 0;
+  }
+  .overview-panel .dashboard {
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+  }
+  .intro {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+  .intro p {
+    max-width: 245px;
+  }
+  .intro-tools {
+    flex-shrink: 0;
+  }
+  .radar-panel .radar-host {
+    max-width: 350px;
+  }
+}
+@media (max-width: 520px) {
+  .intro p {
+    max-width: 210px;
+  }
+  .overview-panel > summary {
+    gap: 8px;
+  }
+  .overview-panel > summary > span {
+    flex-shrink: 0;
+  }
+  .calibration-panel .progress-track {
+    grid-row: 1;
+    align-self: center;
+  }
+}
+.intro {
+  display: flex;
+}
+.quest-overview-top {
+  flex-direction: row;
+  align-items: flex-start;
+}
+.quest-overview-top > div:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  align-items: baseline;
+}
+.quest-explainer {
+  flex-basis: 100%;
+  margin-top: 0;
+}
+.quest-completed-total {
+  margin-top: 0;
+}
+.quest-progress-track {
+  flex-basis: 100%;
+}
+.quest-overview-top .quest-replace-note {
+  margin-top: 7px;
+}
+@media (max-width: 520px) {
+  .quest-board-controls {
+    max-width: 145px;
+  }
+  .quest-overview-top {
+    gap: 10px;
+  }
+  .quest-overview-top > div:first-child {
+    gap: 4px;
+  }
+  .section-heading {
+    display: flex;
+  }
+  .catalog-meta {
+    max-width: 128px;
+    flex-shrink: 0;
+  }
+  .section-heading p {
+    font-size: 12px;
+  }
+  .catalog-meta .subtle-button {
+    font-size: 11px;
+    padding: 6px 8px;
+  }
+  .intro-tools {
+    align-items: flex-end;
+  }
+  .intro p {
+    max-width: 200px;
+  }
+}
+
+.quick-profile .radar-label {
+  font-size: 14px;
+}

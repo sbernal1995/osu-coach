@@ -65,7 +65,7 @@ class DiscoveryStore:
         self.baseline = None
         self.next_retry_at = 0
         self.retry_path = self.path.with_name("discovery-retry.json")
-        self.status = {"state": "ready", "message": "Se buscan mapas nuevos cada 24 horas mientras el entrenador está abierto."}
+        self.status = {"state": "ready", "message": "Se explora el catálogo público, también mapas antiguos, mientras el entrenador está abierto."}
         if self.path.exists():
             try:
                 value = json.loads(self.path.read_text(encoding="utf-8"))
@@ -161,13 +161,14 @@ class DiscoveryStore:
                            sample.get("mode", 0), sample.get("mod_key")], sort_keys=True)
 
     @coach_settings
-    def sync(self, baseline, sample=None, force=False, *, needs=None, exclude_ids=()):
+    def sync(self, baseline, sample=None, force=False, *, needs=None, exclude_ids=(), excluded_songs=(), envelope=None):
         if not compatible(sample) or (not force and not get_setting("discovery_enabled")):
             return False
         needs = copy.deepcopy(needs or [])
         demand = bool(needs)
+        excluded_songs = tuple(excluded_songs)
         requirements = [{key: item[key] for key in ("min_stars", "max_stars", "max_bpm", "max_ar", "max_length")
-                         if key in item} for item in needs]
+                         if key in item} for item in (envelope if envelope is not None else needs)]
         identity = self._profile(sample)
         now = time.time()
         with self.lock:
@@ -175,7 +176,7 @@ class DiscoveryStore:
                     or (self.thread is not None and self.thread.is_alive())):
                 return False
             level_changed = self.baseline is not None and abs(baseline - self.baseline) >= .5 - 1e-8
-            if demand:
+            if demand or force:
                 if now < self.demand_retry_at:
                     return False
             elif not force and now - self.fetched_epoch < get_setting("discovery_interval_hours") * 3600 and not (level_changed and now - self.fetched_epoch >= 3600):
@@ -202,8 +203,8 @@ class DiscoveryStore:
                     restart = True
             cursor = None if restart else search.get("cursor")
             excluded = tuple(set(exclude_ids) | {_identifier(m) for m in self.maps if candidate_quality_ok(m)} - {None})
-            self.status.update(state="loading", message=("Buscando automáticamente mapas adecuados para las etapas con huecos…"
-                                                        if demand else "Buscando novedades de osu! con buena valoración y suficientes partidas registradas…"))
+            self.status.update(state="loading", message=("Buscando automáticamente mapas adecuados para las misiones y su reserva…"
+                                                        if demand else "Explorando el catálogo de osu!, también canciones antiguas, con buena valoración y suficientes partidas…"))
             self.next_retry_at = now + get_setting("discovery_retry_minutes") * 60
             revision = self.revision
             request_settings = dict(self.settings)
@@ -219,7 +220,7 @@ class DiscoveryStore:
                 if requested_upper:
                     upper = max(upper, max(requested_upper))
                 next_cursor, exhausted = None, False
-                if demand:
+                if demand or self.batch_fetcher is not None or self.fetcher is None:
                     if self.batch_fetcher is not None:
                         fetch = self.batch_fetcher
                     elif self.fetcher is None:
@@ -230,7 +231,8 @@ class DiscoveryStore:
                     if fetch is None:
                         batch = {"maps": self.fetcher(lower, upper), "next_cursor": None, "exhausted": True}
                     else:
-                        batch = fetch(lower, upper, cursor=cursor, exclude_ids=excluded, requirements=requirements)
+                        batch = fetch(lower, upper, cursor=cursor, exclude_ids=excluded, requirements=requirements,
+                                      **({"excluded_songs": excluded_songs} if excluded_songs else {}))
                     if (not isinstance(batch, dict) or not _valid_maps(batch.get("maps"))
                             or not isinstance(batch.get("exhausted"), bool)):
                         raise ValueError("La búsqueda devolvió un lote inválido.")
@@ -258,7 +260,7 @@ class DiscoveryStore:
                     merged = {_identifier(m): m for m in self.maps if _identifier(m) is not None and candidate_quality_ok(m)}
                     merged.update({_identifier(m): m for m in maps if _identifier(m) is not None})
                     combined = list(merged.values())[-2000:]
-                    if demand:
+                    if demand or self.batch_fetcher is not None or self.fetcher is None:
                         retry = fetched + (EXHAUSTED_RETRY_DELAY if exhausted else get_setting("discovery_retry_minutes") * 60)
                         search = {"profile": identity, "baseline": baseline if restart else previous_base, "cursor": next_cursor,
                                   "exhausted": exhausted, "requirements": requirements if restart else previous, "next_retry_at": retry}
@@ -271,7 +273,7 @@ class DiscoveryStore:
                     temp.write_text(json.dumps(value, ensure_ascii=False), encoding="utf-8")
                     temp.replace(self.path)
                     self.maps, self.fetched_epoch, self.baseline = combined, fetched, baseline
-                    if demand:
+                    if demand or self.batch_fetcher is not None or self.fetcher is None:
                         self.search, self.demand_retry_at = search, retry
                         found = "Se encontró 1 dificultad candidata." if len(maps) == 1 else f"Se encontraron {len(maps)} dificultades candidatas."
                         message = (found + " Las etapas se rellenan automáticamente si cumplen sus límites."
@@ -280,7 +282,7 @@ class DiscoveryStore:
                             message += " Se llegó al final de la fuente consultada; se volverá a buscar en una hora si siguen faltando mapas."
                     else:
                         message = (f"Búsqueda actualizada: {len(maps)} dificultades candidatas. Se comprueban los límites de cada etapa antes de recomendarlas."
-                                   if maps else "Las novedades consultadas todavía no tienen mapas con buena valoración y suficientes partidas registradas en tu rango. La búsqueda se ampliará automáticamente si faltan misiones.")
+                                   if maps else "Las páginas consultadas todavía no aportaron mapas con buena valoración y suficientes partidas registradas en tu rango. La búsqueda se ampliará automáticamente si faltan misiones.")
                     self.status.update(state="ready", message=message)
                     self._save_retry(clear=True)
             except Exception as error:

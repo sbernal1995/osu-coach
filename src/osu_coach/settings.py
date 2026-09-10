@@ -51,9 +51,10 @@ SCHEMA = [
     field("quality_min_rating", "Valoración mínima para descargar", 8.0, 0.0, 10.0, .1, "Mapas para descargar", "Nota del conjunto de dificultades, calculada a partir de votos verificables."),
     field("quality_min_votes", "Votos mínimos de valoración", 10, 1, 100000, 1, "Mapas para descargar", "Debe cumplirse junto con la nota mínima y el conteo de partidas."),
     field("quality_min_plays", "Partidas jugadas mínimas del conjunto", 10000, 0, 1000000000, 1000, "Mapas para descargar", "Total de partidas de todas las dificultades; no representa jugadores únicos."),
-    field("discovery_enabled", "Buscar mapas automáticamente", True, None, None, None, "Mapas para descargar", "Busca candidatas cuando faltan misiones y revisa novedades periódicamente."),
-    field("discovery_interval_hours", "Revisión habitual de novedades (horas)", 24.0, 1.0, 168.0, 1, "Mapas para descargar", "Intervalo de búsqueda cuando las etapas ya tienen mapas."),
-    field("discovery_retry_minutes", "Intervalo cuando faltan mapas (minutos)", 1, 1, 60, 1, "Mapas para descargar", "Pausa mínima entre lotes de búsqueda para llenar los lugares disponibles."),
+    field("discovery_reserve_per_stage", "Canciones online de reserva por etapa", 6, 0, 30, 1, "Mapas para descargar", "Candidatas para descargar adicionales por etapa, fuera de las misiones actuales. El coach sigue buscando hasta cubrir esta reserva; 0 busca solo si faltan misiones."),
+    field("discovery_enabled", "Buscar mapas automáticamente", True, None, None, None, "Mapas para descargar", "Completa las misiones, prepara una reserva y sigue explorando mapas de cualquier antigüedad."),
+    field("discovery_interval_hours", "Revisión habitual del catálogo (horas)", 24.0, 1.0, 168.0, 1, "Mapas para descargar", "Intervalo de búsqueda cuando las etapas y su reserva ya están cubiertas."),
+    field("discovery_retry_minutes", "Intervalo para completar mapas y reserva (minutos)", 1, 1, 60, 1, "Mapas para descargar", "Pausa mínima entre lotes de búsqueda para llenar los lugares disponibles."),
 ]
 DEFAULTS = {item["key"]: item["default"] for item in SCHEMA}
 _FIELDS = {item["key"]: item for item in SCHEMA}

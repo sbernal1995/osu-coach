@@ -64,7 +64,7 @@ class AutomaticDiscoveryTests(unittest.TestCase):
         self.assertEqual(1, self.fetch.call_count)
         args = self.fetch.call_args.kwargs
         self.assertTrue({1, 2, 3, *range(9000, 9005)} <= set(args["exclude_ids"]))
-        self.assertEqual(2, len(args["requirements"]))
+        self.assertEqual(3, len(args["requirements"]))  # Explore every stage, even while only two have gaps.
         for requirement in args["requirements"]:
             self.assertEqual(165, requirement["max_bpm"])
             self.assertEqual(8.7, requirement["max_ar"])

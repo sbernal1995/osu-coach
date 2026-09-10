@@ -22,6 +22,8 @@ from osu_coach.core.engine import assess, recommend, number, apply_player_profil
 from osu_coach.core.player_profile import build_player_profile
 from osu_coach.storage.quest_store import QuestStore, scope_key, map_tokens, is_remote
 from osu_coach.storage.progress_store import ProgressStore
+from osu_coach.storage.song_ban_store import SongBanStore
+from osu_coach.core.song_identity import song_tokens, song_owner
 from osu_coach.storage.discovery_store import DiscoveryStore
 from osu_coach.integrations.discovery_source import candidate_quality_ok
 from osu_coach.core.tag_analysis import analyze_tags, skill_tags
@@ -90,6 +92,7 @@ class Coach:
         self.db = sqlite3.connect(self.data / "coach.sqlite3", check_same_thread=False)
         self.db.execute("CREATE TABLE IF NOT EXISTS plays (id TEXT PRIMARY KEY, data TEXT NOT NULL, status TEXT NOT NULL)")
         self.quest_store = QuestStore(self.db)
+        self.song_bans = SongBanStore(self.db)
         self.progress_store = ProgressStore(self.db)
         self.db.commit()
         self.catalog = []
@@ -209,6 +212,27 @@ class Coach:
                 return self.quest_store.replace(scope_key(self.active, self.config["since"]),
                     state["profile_label"], state["recommendations"], board_id)
 
+    def ban_song(self, board_id, quest_id):
+        with self.lock:
+            if not self.active:
+                raise ValueError("Jugá una primera partida para preparar tu perfil.")
+            scope = scope_key(self.active, self.config["since"])
+            board = self.quest_store.current(scope)
+            if not board or board["id"] != board_id:
+                raise ValueError("Las misiones cambiaron. Recargá el panel y elegí la canción otra vez.")
+            quest = next((q for g in board["groups"] for q in g["quests"] if q["id"] == quest_id), None)
+            if quest is None:
+                raise ValueError("Esa misión ya se renovó. Elegí una misión actual.")
+            with self.discovery_store.lock:
+                aliases = self.catalog + copy.deepcopy(self.discovery_store.maps)
+            with self.db:
+                self.song_bans.ban(song_owner(self.active), quest["map"], aliases)
+            self.state()
+
+    def unban_song(self, identifier):
+        with self.lock, self.db:
+            self.song_bans.unban(song_owner(self.active), identifier)
+
     def quest_replacements(self, scope, board, maps, profile, analysis, player):
         visible = [quest["map"] for group in board["groups"] for quest in group["quests"]]
         occupied = PlayedHistory([], catalog=self.catalog + maps, completed=visible)
@@ -316,14 +340,18 @@ class Coach:
         if self.args.demo:
             return
         with self.lock:
+            state = self.state()
             active = self.training_plays()
-            profile = assess(active, since=self.config["since"], initial=self.config.get("initial_stars", 2.5))
-            self.discovery_store.sync(profile["baseline"], active[0] if active else None, force=force)
+            excluded = {int(number(m.get("id"))) for m in self.catalog}
+            excluded.update(int(number(p.get("beatmap_id"))) for p in active)
+            self.discovery_store.sync(state["profile"]["baseline"], active[0] if active else None, force=force,
+                needs=state["discovery"]["search_needs"], envelope=state["discovery"]["limits"],
+                exclude_ids=excluded - {0}, excluded_songs=self.song_bans.tokens(song_owner(self.active)))
 
     def discover_periodically(self):
         while not self.stop.is_set():
             state = self.state()
-            if not state["discovery"]["needs"]:
+            if not state["discovery"]["search_needs"]:
                 self.sync_discovery()
             self.stop.wait(60)
 
@@ -432,7 +460,9 @@ class Coach:
             scope = scope_key(self.active, self.config["since"]) if self.active else None
             completed_history = self.quest_store.completions(scope, limit=None)["items"] if scope else []
             history = PlayedHistory(active, catalog=self.catalog + maps, completed=completed_history)
-            unplayed = [beatmap for beatmap in maps if not history.contains(beatmap)]
+            banned = self.song_bans.tokens(song_owner(self.active))
+            unplayed = [beatmap for beatmap in maps if not history.contains(beatmap)
+                        and not song_tokens(beatmap) & banned]
             groups = recommend(unplayed, profile, tag_analysis=analysis, player_profile=player, fill_online=True)
             for group in groups:
                 if not group["maps"]:
@@ -455,6 +485,8 @@ class Coach:
             pending = self.plays("pending", limit=None)
             if self.active:
                 def skip_reason(quest):
+                    if song_tokens(quest["map"]) & banned and not self.quest_is_protected(quest, pending):
+                        return "song_banned"
                     if self.can_skip_played_quest(quest, history, pending):
                         return "played_before_assignment"
                     if self.can_skip_download_quality(quest, pending, local_keys, local_ids, popularity):
@@ -468,24 +500,42 @@ class Coach:
                 quest_history = self.quest_store.history(scope)
                 quest_completions = self.quest_store.completions(scope)
                 quest_skips = self.quest_store.skips(scope)
-            needs = []
+            needs, envelope = [], []
             ceilings = physical_limits(profile)
             for group in groups:
                 assigned = next((g for g in (quest_board or {}).get("groups", []) if g["stage"] == group["stage"]), None)
                 count = (sum(q["status"] in {"pending", "in_progress"} for q in assigned["quests"])
                          if assigned is not None else len(group["maps"]))
+                limits = {"stage": group["stage"], "label": group["label"], "target": group["target"],
+                          "min_stars": max(.1, group["target"] - get_setting("star_tolerance_below")),
+                          "max_stars": group["target"] + get_setting("star_tolerance_above"),
+                          **{"max_" + field: limit for field, limit in ceilings.items()}}
+                envelope.append(limits)
                 if count < 3:
-                    needs.append({"stage": group["stage"], "label": group["label"], "target": group["target"],
-                                  "missing": 3 - count, "min_stars": max(.1, group["target"] - get_setting("star_tolerance_below")),
-                                  "max_stars": group["target"] + get_setting("star_tolerance_above"),
-                                  **{"max_" + field: limit for field, limit in ceilings.items()}})
-            if (needs and self.background_enabled and not self.args.demo
+                    needs.append({**limits, "missing": 3 - count})
+            reserve_target = get_setting("discovery_reserve_per_stage")
+            assigned_songs = {token for g in (quest_board or {}).get("groups", [])
+                              for q in g["quests"] for token in song_tokens(q["map"])}
+            reserve_maps = [m for m in unplayed if is_remote(m) and not song_tokens(m) & assigned_songs]
+            reserves = (recommend(reserve_maps, profile, limit=reserve_target, tag_analysis=analysis,
+                                  player_profile=player, fill_online=True) if reserve_target else [])
+            reserve = [{"stage": g["stage"], "label": g["label"], "available": len(g["maps"]),
+                        "target": reserve_target, "missing": max(0, reserve_target - len(g["maps"]))} for g in reserves]
+            reserve_needs = [{**limits, "missing": item["missing"]} for item in reserve if item["missing"]
+                             for limits in envelope if limits["stage"] == item["stage"]]
+            search_needs = needs or reserve_needs
+            if (search_needs and self.background_enabled and not self.args.demo
                     and not (self.scanning and not self.catalog)):
                 excluded = {int(number(m.get("id"))) for m in self.catalog}
                 excluded.update(int(number(p.get("beatmap_id"))) for p in active)
                 excluded.update(int(number(q.get("map", {}).get("id"))) for q in completed_history)
-                self.discovery_store.sync(profile["baseline"], sample, needs=needs, exclude_ids=excluded - {0})
+                self.discovery_store.sync(profile["baseline"], sample, needs=search_needs, envelope=envelope,
+                                          exclude_ids=excluded - {0}, excluded_songs=banned)
             discovery = self.discovery_store.snapshot(self.catalog, sample, needs=needs)
+            discovery.update(reserve=reserve, search_needs=search_needs, limits=envelope,
+                             scope="Catálogo público de osu!, sin límite de antigüedad.")
+            if search_needs and not needs:
+                discovery["next_retry"] = self.discovery_store.snapshot(self.catalog, sample, needs=search_needs)["next_retry"]
             quest_availability = {}
             if quest_board:
                 for group in quest_board["groups"]:
@@ -521,10 +571,11 @@ class Coach:
                     "quest_board": quest_board, "quest_history": quest_history,
                     "quest_completions": quest_completions,
                     "quest_skips": quest_skips,
+                    "song_bans": self.song_bans.snapshot(song_owner(self.active)),
                     "quest_availability": quest_availability,
                     "recommendation_policy": {"mode": "unplayed", "unit": "difficulty", "history_plays": len(active),
                         "message": "Las nuevas misiones evitan dificultades que ya jugaste. "
-                                   "Pueden incluir otras dificultades de la misma canción. "
+                                   "Pueden incluir otras dificultades de la misma canción, salvo que la hayas excluido. "
                                    "Las misiones en práctica conservan sus metas."},
                     "coach_progress": coach_progress,
                     "tag_analysis": analysis, "tag_sync": self.tag_store.snapshot(self.catalog),
@@ -622,6 +673,14 @@ class Handler(BaseHTTPRequestHandler):
                 if "board_id" not in body or (body["board_id"] is not None and not isinstance(body["board_id"], str)):
                     raise ValueError("Indicá la tanda que querés renovar.")
                 self.server.coach.new_quests(body["board_id"])
+            elif self.path == "/api/songs/ban":
+                if set(body) != {"board_id", "quest_id"} or any(not isinstance(v, str) or not v or len(v) > 100 for v in body.values()):
+                    raise ValueError("Indicá una misión actual para excluir su canción.")
+                self.server.coach.ban_song(body["board_id"], body["quest_id"])
+            elif self.path == "/api/songs/unban":
+                if set(body) != {"id"} or not isinstance(body["id"], str) or not 0 < len(body["id"]) <= 100:
+                    raise ValueError("Indicá la canción que querés volver a permitir.")
+                self.server.coach.unban_song(body["id"])
             elif self.path == "/api/confirm":
                 if not isinstance(body.get("accept"), bool):
                     raise ValueError("Indicá si la partida fue tuya.")

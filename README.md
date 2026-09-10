@@ -135,13 +135,19 @@ Cada tarjeta explica la meta para ese mapa. Es un objetivo de entrenamiento, no 
 
 Las nuevas misiones evitan dificultades exactas ya jugadas en ese perfil. Otras dificultades de la misma canción pueden seguir apareciendo. El perfil se separa por jugador, cliente y configuración de mods.
 
+Si una canción no te gusta, usá **No me gusta esta canción** en su misión. Se excluyen todas sus dificultades y otros sets con el mismo artista y título, incluidas las variantes romanizadas conocidas. La misión se reemplaza automáticamente cuando hay otra candidata. Si estás jugando ese mapa o falta confirmar su resultado, el reemplazo espera para conservar el intento. Podés deshacerlo en **Ajustes → Canciones excluidas**. El veto se guarda por jugador, persiste entre clientes, mods y recalibraciones, y conserva partidas y logros. Títulos de remixes o versiones distintos se tratan como canciones distintas.
+
 Los tags describen tendencias observadas en mapas comparables. Una asociación con un tag no identifica por sí sola el patrón concreto donde fallaste. El panel muestra cuánta evidencia respalda cada conclusión.
 
 La referencia reciente puede subir o bajar. El rango personal ganado se conserva y exige demostrar resultados sólidos en varias dificultades distintas, según los criterios configurados.
 
 ## Mapas por descargar
 
-Si faltan candidatos para una etapa, el coach recorre páginas públicas de osu! en lotes acotados. Aplica localmente tus límites de estrellas, AR, BPM y duración. La consulta continúa aunque un lote no aporte resultados.
+El coach busca canciones **antiguas y recientes**: nuevas para tus recomendaciones no significa recién publicadas. La [búsqueda pública de osu! sin iniciar sesión](https://github.com/ppy/osu-web/blob/master/app/Libraries/Search/BeatmapsetSearchRequestParams.php) ordena por fecha de clasificación y limita los filtros disponibles. Por eso el coach recorre páginas hacia mapas más antiguos y aplica localmente tus límites de estrellas, AR, BPM y duración, junto con tus exclusiones.
+
+La pantalla mantiene hasta **9 misiones** y prepara una **reserva de 6 canciones online por etapa** fuera de las misiones actuales. La reserva evita que la búsqueda se detenga apenas se llena el tablero. Podés configurar su tamaño en **Ajustes → Mapas para descargar**, o ponerlo en 0 para buscar solo cuando falten misiones. Los filtros y los conteos de reserva aparecen en **Filtros y frecuencia de búsqueda**.
+
+Cada lote lee hasta tres páginas y verifica hasta ocho conjuntos. Los conjuntos que quedan pendientes se guardan para el siguiente lote. Las búsquedas automáticas, periódicas y manuales conservan el punto de continuación, incluso al cerrar el coach. Un lote vacío no termina el recorrido. Cambiar de perfil o ampliar sustancialmente los filtros puede reiniciarlo para revisar mapas antes descartados.
 
 Con la configuración inicial, un conjunto descargable necesita cumplir **a la vez**:
 

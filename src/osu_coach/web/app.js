@@ -139,9 +139,11 @@ function setAvailability() {
     !Object.prototype.hasOwnProperty.call(currentState, "quest_board");
   $("confirm-reset").disabled = busyAction || !online;
   $("cancel-reset").disabled = busyAction;
-  document.querySelectorAll(".pending-actions button").forEach((button) => {
-    button.disabled = !online || busyAction;
-  });
+  document
+    .querySelectorAll(".pending-actions button, .song-preference-button")
+    .forEach((button) => {
+      button.disabled = !online || busyAction;
+    });
   updateSettingsAvailability();
 }
 async function request(path, payload) {
@@ -2095,6 +2097,33 @@ function mapCard(map, quest = null, availability = null, automatic = false) {
     card.append(details);
   }
   compactMapCard(card, map, quest);
+  if (quest && ["pending", "in_progress"].includes(quest.status)) {
+    const preference = element("div", "song-preference");
+    const ban = element(
+      "button",
+      "text-button song-preference-button",
+      "No me gusta esta canción",
+    );
+    ban.type = "button";
+    ban.title = "Excluir todas sus dificultades. Podés deshacerlo en Ajustes.";
+    ban.setAttribute(
+      "aria-label",
+      "No recomendar la canción " +
+        (map.title || "de esta misión") +
+        ": excluir todas sus dificultades",
+    );
+    ban.addEventListener("click", async () => {
+      await action(
+        "/api/songs/ban",
+        { board_id: currentState?.quest_board?.id, quest_id: quest.id },
+        "Canción excluida en todas sus dificultades. Podés volver a permitirla en Ajustes.",
+      );
+      if (!ban.isConnected)
+        $("recommendations").querySelector(".song-preference-button")?.focus();
+    });
+    preference.append(ban);
+    card.append(preference);
+  }
   return card;
 }
 function automaticSearchNotice(state, stage = null, empty = false) {
@@ -2250,7 +2279,7 @@ function renderDiscovery(state) {
     : [];
   const search = automaticSearchNotice(state);
   $("discovery-bar").dataset.state = discovery.state || "";
-  text("discovery-sync-button", loading ? "Buscando…" : "Buscar mapas nuevos");
+  text("discovery-sync-button", loading ? "Buscando…" : "Explorar más mapas");
   text(
     "discovery-message",
     search
@@ -2258,7 +2287,37 @@ function renderDiscovery(state) {
       : discovery.message ||
           "La búsqueda de mapas nuevos estará disponible al actualizar el entrenador.",
   );
-  const meta = [];
+  const meta = ["Incluye canciones antiguas y recientes"];
+  const limits = (discovery.limits || []).filter(Boolean);
+  if (limits.length) {
+    meta.push(
+      "Rango de búsqueda: " +
+        format(Math.min(...limits.map((item) => item.min_stars))) +
+        "–" +
+        format(Math.max(...limits.map((item) => item.max_stars))) +
+        " ★",
+    );
+    const physical = limits[0];
+    if (numeric(physical.max_bpm))
+      meta.push("Hasta " + format(physical.max_bpm) + " BPM");
+    if (numeric(physical.max_ar)) meta.push("AR ≤ " + format(physical.max_ar));
+    if (numeric(physical.max_length))
+      meta.push("Duración ≤ " + duration(physical.max_length));
+  }
+  const reserve = discovery.reserve || [];
+  if (reserve.length)
+    meta.push(
+      "Reserva para descargar: " +
+        reserve
+          .map((item) => item.label + " " + item.available + "/" + item.target)
+          .join(" · "),
+    );
+  if (
+    discovery.next_retry &&
+    !needs.length &&
+    reserve.some((item) => item.missing > 0)
+  )
+    meta.push("Preparando más alternativas automáticamente");
   if (needs.length)
     meta.push(
       "Etapas: " +
@@ -2280,8 +2339,8 @@ function renderDiscovery(state) {
     meta.push(
       format(discovery.candidate_count) +
         (Number(discovery.candidate_count) === 1
-          ? " candidato guardado"
-          : " candidatos guardados"),
+          ? " dificultad online guardada"
+          : " dificultades online guardadas"),
     );
   if (
     discovery.last_updated &&
@@ -2425,6 +2484,49 @@ function renderQuestCompletions(state, automatic) {
     root.append(item);
   });
 }
+function renderSongBans(state) {
+  const items = state.song_bans?.items || [];
+  text("song-bans-count", items.length ? " · " + format(items.length) : "");
+  const root = $("song-bans-list");
+  const signature = JSON.stringify(items);
+  if (root.dataset.signature === signature) return;
+  root.dataset.signature = signature;
+  root.replaceChildren();
+  if (!items.length)
+    root.append(
+      element(
+        "li",
+        "song-bans-empty",
+        "Todavía no excluiste canciones. Podés hacerlo desde cualquier misión.",
+      ),
+    );
+  for (const song of items) {
+    const row = element("li", "song-ban-item");
+    const label = element("div");
+    label.append(
+      element("strong", "", song.title),
+      element("span", "", song.artist),
+    );
+    const restore = element(
+      "button",
+      "subtle-button song-preference-button",
+      "Volver a permitir",
+    );
+    restore.type = "button";
+    restore.setAttribute("aria-label", "Volver a recomendar " + song.title);
+    restore.addEventListener("click", async () => {
+      await action(
+        "/api/songs/unban",
+        { id: song.id },
+        "Canción permitida. Puede volver a aparecer si cumple tus criterios de práctica.",
+      );
+      if (!restore.isConnected)
+        $("song-bans-panel").querySelector("summary").focus();
+    });
+    row.append(label, restore);
+    root.append(row);
+  }
+}
 function renderQuestSkips(state) {
   const ledger = state.quest_skips;
   const items = Array.isArray(ledger?.items)
@@ -2438,10 +2540,7 @@ function renderQuestSkips(state) {
   $("quest-skips").hidden = !total;
   text(
     "quest-skips-label",
-    format(total) +
-      (total === 1
-        ? " misión retirada por una dificultad ya jugada"
-        : " misiones retiradas por dificultades ya jugadas"),
+    format(total) + (total === 1 ? " misión retirada" : " misiones retiradas"),
   );
   const root = $("quest-skips-list");
   root.replaceChildren();
@@ -2461,8 +2560,13 @@ function renderQuestSkips(state) {
         "",
         quest.skipped_at &&
           Number.isFinite(new Date(quest.skipped_at).getTime())
-          ? "Retirada el " + coachDate(quest.skipped_at)
-          : "Jugada antes de asignarse",
+          ? ({
+              song_banned: "Canción excluida por vos",
+              download_quality: "Ya no cumple los filtros de descarga",
+            }[quest.skipped_reason] || "Dificultad ya jugada") +
+              " · " +
+              coachDate(quest.skipped_at)
+          : "Misión retirada",
       ),
     );
     root.append(row);
@@ -2472,7 +2576,7 @@ function renderQuestSkips(state) {
       element(
         "li",
         "",
-        "Estas dificultades ya tenían partidas registradas antes de asignarse. Los logros conservan su contador propio.",
+        "Las misiones retiradas conservan su historial y no cuentan como logros.",
       ),
     );
 }
@@ -3149,6 +3253,7 @@ function renderPending(state) {
 }
 function render(state) {
   renderSettings(state);
+  renderSongBans(state);
   renderSettingsHelp(state);
   const p = state.profile || {};
   const hasSession = p.session && typeof p.session === "object";
@@ -3401,7 +3506,11 @@ $("tag-sync-button").addEventListener("click", () =>
   action("/api/tags/sync", {}, "Consultando los tags de tus mapas."),
 );
 $("discovery-sync-button").addEventListener("click", () =>
-  action("/api/discovery/sync", {}, "Buscando mapas nuevos para tu nivel."),
+  action(
+    "/api/discovery/sync",
+    {},
+    "Explorando más canciones del catálogo para tu nivel.",
+  ),
 );
 $("quest-new-button").addEventListener("click", () =>
   action(

@@ -146,13 +146,15 @@ class QuestStore:
         changed = False
         for group in board["groups"]:
             for quest in group["quests"]:
-                if (quest["status"] != "pending" or quest.get("attempt_count", 0)
-                        or quest.get("last_attempt") is not None):
+                if quest["status"] not in {"pending", "in_progress"}:
                     continue
                 decision = predicate(quest)
                 if not decision:
                     continue
-                reason = "download_quality" if decision == "download_quality" else "played_before_assignment"
+                if decision != "song_banned" and (quest["status"] != "pending" or quest.get("attempt_count", 0)
+                                                  or quest.get("last_attempt") is not None):
+                    continue
+                reason = decision if decision in {"download_quality", "song_banned"} else "played_before_assignment"
                 quest.update(status="skipped", skipped_reason=reason, skipped_at=utcnow())
                 saved = copy.deepcopy(quest)
                 saved.setdefault("stage_label", group.get("label"))

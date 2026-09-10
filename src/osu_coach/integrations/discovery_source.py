@@ -6,9 +6,10 @@ https://github.com/ppy/osu-web/blob/master/app/Http/Controllers/BeatmapsetsContr
 https://github.com/ppy/osu-web/blob/master/app/Models/Beatmapset.php
 
 Guest search ignores advanced filters and sorting. Therefore this client reads
-at most three pages of the public recent-map feed and applies the star range,
+at most three pages per batch of the public feed, resuming into older maps, and applies the star range,
 mode and quality filters locally. It does not claim an exhaustive search.
 At most eight matching sets receive a second read to verify rating vote counts.
+Unverified set IDs remain queued in the opaque cursor for subsequent batches.
 Ratings and play_count describe the whole set, not an individual difficulty.
 Candidates require both a verified rating with votes and sufficient plays.
 Ranked status alone never qualifies a map. No cookie or OAuth token is used.
@@ -23,6 +24,7 @@ import math
 import threading
 import time
 
+from osu_coach.core.song_identity import song_tokens
 from osu_coach.settings import get_setting
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlsplit
@@ -39,7 +41,7 @@ MIN_REQUEST_INTERVAL = 1.1
 MIN_RATING = 8.0
 MIN_RATING_VOTES = 10
 MIN_PLAY_COUNT = 10_000
-SCOPE_NOTE = "Novedades públicas de osu!: el rango de dificultad se filtra en este entrenador."
+SCOPE_NOTE = "Catálogo público de osu!: incluye mapas antiguos; la dificultad y la calidad se filtran en el coach."
 
 
 class DiscoverySourceError(RuntimeError):
@@ -106,8 +108,8 @@ def _requirements(values):
     return result
 
 
-def _eligible(item, excluded, requirements):
-    return item["id"] not in excluded and (not requirements or any(
+def _eligible(item, excluded, requirements, excluded_songs=()):
+    return item["id"] not in excluded and not song_tokens(item).intersection(excluded_songs) and (not requirements or any(
         requirement["min_stars"] <= item["stars"] <= requirement["max_stars"]
         and all(item[field] <= requirement[limit] for field, limit in (
             ("bpm", "max_bpm"), ("ar", "max_ar"), ("length", "max_length")) if limit in requirement)
@@ -295,7 +297,7 @@ def parse_candidates(beatmapset: dict, min_stars, max_stars, *, require_qualific
             "url": f"https://{OFFICIAL_HOST}/beatmapsets/{set_id}#osu/{map_id}",
             "download_url": f"https://{OFFICIAL_HOST}/beatmapsets/{set_id}/download",
             "popularity": dict(evidence), "status": item["status"],
-            "discovery_scope": "recent_public_feed", "difficulty_source": "osu_public_nomod",
+            "discovery_scope": "public_catalog", "difficulty_source": "osu_public_nomod",
             "lazer_only": item.get("lazer_only") is True,
         }
         for key, upstream in (("od", "accuracy"), ("cs", "cs")):
@@ -360,25 +362,35 @@ class DiscoverySourceClient:
             except (URLError, TimeoutError, OSError, UnicodeError) as exc:
                 raise DiscoverySourceError("No se pudieron consultar los mapas públicos de osu!.") from exc
 
-    def fetch_candidate_batch(self, min_stars, max_stars, *, cursor=None, exclude_ids=(), requirements=()) -> dict:
+    def fetch_candidate_batch(self, min_stars, max_stars, *, cursor=None, exclude_ids=(), requirements=(), excluded_songs=()) -> dict:
         """Read one bounded batch, continuing the public descending-ranked feed.
 
         next_cursor is JSON serializable and must be stored opaquely. Empty
         results can still have a next cursor. A repeated/backward cursor or page
         ends the feed safely. Stage requirements are alternatives (logical OR).
-        Verification prioritises eight sets per batch; this is not exhaustive.
+        Verification checks eight sets per batch; remaining IDs stay in the cursor.
         """
         lower, upper = _range(min_stars, max_stars)
         stage_requirements = _requirements(requirements)
+        pending, feed_exhausted = [], False
+        if isinstance(cursor, dict) and cursor.get("version") == 2:
+            pending = cursor.get("pending")
+            feed_exhausted = cursor.get("feed_exhausted")
+            if (not isinstance(pending, list) or len(pending) > MAX_PAGES * MAX_SETS_PER_PAGE
+                    or any(_integer(value, 1) is None for value in pending)
+                    or len(set(pending)) != len(pending) or type(feed_exhausted) is not bool
+                    or (not feed_exhausted and cursor.get("feed") is None)):
+                raise ValueError("La continuación del catálogo es inválida.")
+            cursor = cursor.get("feed")
         current = _read_cursor(cursor)
         excluded = {value for value in exclude_ids if _integer(value, 1) is not None}
         candidates = {}
         seen_sets, seen_pages = set(), set()
         if current["last_page"] is not None:
             seen_pages.add(current["last_page"])
-        next_cursor = None
-        exhausted = False
-        for _ in range(MAX_PAGES):
+        next_cursor = cursor
+        exhausted = feed_exhausted
+        for _ in range(0 if pending or feed_exhausted else MAX_PAGES):
             query = ({"cursor_string": current["cursor_string"]} if current["cursor_string"] is not None
                      else {"page": current["page"]})
             text = self._get("/beatmapsets/search", "application/json", query)
@@ -405,7 +417,7 @@ class DiscoverySourceClient:
                 # The public listing already includes the set play count.
                 # Reject insufficient/unknown counts before spending a set read.
                 if (_integer(beatmapset.get("play_count"), get_setting("quality_min_plays")) is not None
-                        and any(_eligible(item, excluded, stage_requirements) for item in
+                        and any(_eligible(item, excluded, stage_requirements, excluded_songs) for item in
                                 parse_candidates(beatmapset, lower, upper, require_qualification=False))):
                     candidates[set_id] = beatmapset
             if new_sets == 0:
@@ -418,27 +430,32 @@ class DiscoverySourceClient:
             current = next_cursor
         # Favourites are only used to prioritise the bounded verification work.
         # The full page provides both the current maps and the rating histogram.
-        selected = sorted(candidates.values(), key=lambda item: (
-            -(_integer(item.get("favourite_count")) or 0), item["id"]))[:MAX_VERIFIED_SETS]
+        queued = pending or [item["id"] for item in sorted(candidates.values(), key=lambda item: (
+            -(_integer(item.get("favourite_count")) or 0), item["id"]))]
+        selected, remaining = queued[:MAX_VERIFIED_SETS], queued[MAX_VERIFIED_SETS:]
         result, seen_maps = [], set()
-        for beatmapset in selected:
-            page = self._get(f"/beatmapsets/{beatmapset['id']}", "text/html")
-            verified = parse_set_page(page, beatmapset["id"])
+        for set_id in selected:
+            page = self._get(f"/beatmapsets/{set_id}", "text/html")
+            verified = parse_set_page(page, set_id)
             # The same public page also carries per-difficulty community tags.
             # Their absence should not discard otherwise verified rating data.
             from osu_coach.integrations.tag_source import TagSourceError, parse_set_tags
             try:
-                tags = parse_set_tags(page, beatmapset["id"])
+                tags = parse_set_tags(page, set_id)
             except (TagSourceError, ValueError):
                 tags = None
             for item in parse_candidates(verified, lower, upper):
-                if item["id"] not in seen_maps and _eligible(item, excluded, stage_requirements):
+                if item["id"] not in seen_maps and _eligible(item, excluded, stage_requirements, excluded_songs):
                     if tags is not None:
                         item["tags"] = [{**tag, "source": "community", "provenance": "community_user_tags"}
                                         for tag in tags.get(item["id"], []) if tag["count"] >= 5]
                         item["tag_status"] = "known" if item["tags"] else ("weak" if tags.get(item["id"]) else "none")
                     result.append(item)
                     seen_maps.add(item["id"])
+        if remaining:
+            next_cursor = {"version": 2, "feed": next_cursor, "feed_exhausted": exhausted,
+                           "pending": remaining}
+            exhausted = False
         return {"maps": result, "next_cursor": next_cursor, "exhausted": exhausted}
 
     def fetch_candidates(self, min_stars, max_stars) -> list[dict]:
@@ -452,6 +469,7 @@ def fetch_candidates(min_stars, max_stars) -> list[dict]:
     return _default_client.fetch_candidates(min_stars, max_stars)
 
 
-def fetch_candidate_batch(min_stars, max_stars, *, cursor=None, exclude_ids=(), requirements=()) -> dict:
+def fetch_candidate_batch(min_stars, max_stars, *, cursor=None, exclude_ids=(), requirements=(), excluded_songs=()) -> dict:
     return _default_client.fetch_candidate_batch(min_stars, max_stars, cursor=cursor,
-                                                 exclude_ids=exclude_ids, requirements=requirements)
+                                                 exclude_ids=exclude_ids, requirements=requirements,
+                                                 **({"excluded_songs": excluded_songs} if excluded_songs else {}))

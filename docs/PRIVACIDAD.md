@@ -2,7 +2,7 @@
 
 ## Qué guarda el coach
 
-El directorio de datos contiene la configuración elegida, las rutas del catálogo, los resultados que aceptaste, las misiones y sus intentos, los rangos ganados y las cachés de metadatos públicos. Los resultados pueden incluir el nombre del jugador, fechas, identidad del mapa, precisión, misses, combo y mods.
+El directorio de datos contiene la configuración elegida, las rutas del catálogo, los resultados que aceptaste, las misiones y sus intentos, las canciones que excluiste, los rangos ganados y las cachés de metadatos públicos. Los resultados pueden incluir el nombre del jugador, fechas, identidad del mapa, precisión, misses, combo y mods.
 
 Por defecto se usa `data/live/`. La demo usa `data/demo/` con partidas y mapas inventados. Ambas rutas parten de la carpeta donde se inicia `python -m osu_coach`. El lanzador `iniciar.cmd` usa siempre la raíz del repositorio. La opción `--data-dir` permite elegir otra ubicación.
 

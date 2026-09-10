@@ -1619,3 +1619,71 @@ footer {
 .quick-profile .radar-label {
   font-size: 14px;
 }
+
+/* Reversible music preferences stay close to each mission. */
+.song-preference {
+  margin-top: 0.4rem;
+  border-top: 1px solid var(--line, #303140);
+  padding-top: 0.3rem;
+}
+.song-preference-button {
+  min-height: 36px;
+  white-space: normal;
+  text-align: left;
+}
+.song-preference .text-button {
+  font-size: 0.75rem;
+  color: var(--muted, #a8a8b8);
+  padding: 0.4rem 0;
+}
+.song-preference .text-button:hover {
+  color: var(--text, #fafafa);
+}
+.song-bans-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--line, #303140);
+  border-radius: 12px;
+}
+.song-bans-panel summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.song-bans-panel p,
+.song-bans-empty {
+  color: var(--muted, #a8a8b8);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+#song-bans-list {
+  list-style: none;
+  padding: 0;
+}
+.song-ban-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 0;
+  border-top: 1px solid var(--line, #303140);
+}
+.song-ban-item > div {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.song-ban-item span {
+  color: var(--muted, #a8a8b8);
+  font-size: 0.8rem;
+}
+.song-ban-item button {
+  flex-shrink: 0;
+}
+@media (max-width: 480px) {
+  .song-ban-item {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+}

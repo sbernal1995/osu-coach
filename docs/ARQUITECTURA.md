@@ -74,3 +74,11 @@ Estas rutas se resuelven desde la carpeta donde se inicia el programa. `iniciar.
 El paquete distribuye código y el panel. Las carpetas de ejecución quedan excluidas del repositorio y de la instalación. Para actualizar desde la estructura anterior, conservá `data/` y la copia de tosu que hayas instalado, y ejecutá el lanzador actualizado o repetí `python -m pip install -e .` desde la raíz.
 
 El servidor publica únicamente los cuatro recursos enumerados en `/assets/`. El navegador carga módulos nativos, sin compilación ni dependencias de frontend para usar el coach. Los criterios de presentación se explican en [Diseño del panel](DISENO.md).
+
+## Preferencias de canciones y reserva
+
+`core/song_identity.py` compara identificadores de conjuntos y pares de artista/título normalizados (Unicode y romanizados). `storage/song_ban_store.py` guarda exclusiones reversibles en SQLite por nombre del jugador; los mods, el cliente y la fecha de recalibración no cambian esa preferencia. La API valida la identidad de una misión actual antes de excluirla y mantiene la protección local de origen y token.
+
+La exclusión se aplica antes de seleccionar recomendaciones o reservas. Las misiones retiradas por gusto musical quedan en `quest_skips` con motivo `song_banned`, conservando intentos y resultados anteriores. Un mapa en juego o con confirmación pendiente espera para retirarse. Permitir una canción otra vez no modifica dificultades ya jugadas ni el registro de misiones retiradas.
+
+`DiscoveryStore` comparte la continuación entre las búsquedas por demanda, periódicas y manuales. El cursor del conector admite una cola de identificadores por verificar además de la posición en el catálogo. Así, el límite de ocho verificaciones por lote no descarta los conjuntos restantes. Las peticiones siguen acotadas y espaciadas. Los filtros de todas las etapas se envían al conector local y la reserva online se cuenta fuera de las canciones ya asignadas.

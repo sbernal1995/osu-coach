@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import Mock, patch
 from urllib.error import HTTPError, URLError
 
-import tag_source
+from osu_coach.integrations import tag_source
 
 
 PAYLOAD = {

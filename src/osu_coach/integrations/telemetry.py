@@ -34,7 +34,7 @@ from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 import uuid
 
-from grades import normalize_grade
+from osu_coach.core.grades import normalize_grade
 
 
 DEFAULT_URL = "http://127.0.0.1:24050/json/v2"

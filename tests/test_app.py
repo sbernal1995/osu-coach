@@ -8,8 +8,8 @@ from unittest.mock import patch
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-from app import Coach, Handler, ThreadingHTTPServer, profile_key
-from demo import demo_data
+from osu_coach.app import Coach, Handler, ThreadingHTTPServer, profile_key
+from osu_coach.demo import demo_data
 
 
 class AppIntegrationTests(unittest.TestCase):

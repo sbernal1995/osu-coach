@@ -10,8 +10,8 @@ from unittest.mock import patch
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-import app
-from demo import demo_data
+from osu_coach import app
+from osu_coach.demo import demo_data
 
 
 class QuestIntegrationTests(unittest.TestCase):
@@ -38,7 +38,7 @@ class QuestIntegrationTests(unittest.TestCase):
 
     def initial_board(self):
         self.seed()
-        with patch("quest_store.utcnow", return_value=self.assigned_at.isoformat()):
+        with patch("osu_coach.storage.quest_store.utcnow", return_value=self.assigned_at.isoformat()):
             return self.coach.state()["quest_board"]
 
     @staticmethod

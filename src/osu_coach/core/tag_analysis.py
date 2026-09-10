@@ -13,8 +13,8 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 import math
-from evidence import recency_weight, session_ids, weighted_mean, setting_text
-from settings import get_setting
+from osu_coach.core.evidence import recency_weight, session_ids, weighted_mean, setting_text
+from osu_coach.settings import get_setting
 
 
 MAX_ITEMS = 25

@@ -1,5 +1,5 @@
 import unittest
-from engine import assess, recommend
+from osu_coach.core.engine import assess, recommend
 
 
 class TagRecommendationIntegrationTests(unittest.TestCase):

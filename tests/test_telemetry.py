@@ -11,7 +11,7 @@ import json
 import unittest
 from unittest.mock import patch
 
-from telemetry import MAX_RESPONSE_BYTES, TosuTracker, read_snapshot
+from osu_coach.integrations.telemetry import MAX_RESPONSE_BYTES, TosuTracker, read_snapshot
 
 
 NOW = 1_788_890_400.0
@@ -249,13 +249,13 @@ class TrackerTests(unittest.TestCase):
 class ReadSnapshotTests(unittest.TestCase):
     def test_external_urls_rejected_without_network(self):
         for url in ("http://example.org/json/v2", "http://127.0.0.1.evil.test/", "file:///tmp/x", "http://user@127.0.0.1/"):
-            with self.subTest(url=url), patch("telemetry.build_opener") as opener:
+            with self.subTest(url=url), patch("osu_coach.integrations.telemetry.build_opener") as opener:
                 with self.assertRaises(ValueError):
                     read_snapshot(url)
                 opener.assert_not_called()
 
     def test_reads_json_and_rejects_non_object(self):
-        with patch("telemetry.build_opener") as opener:
+        with patch("osu_coach.integrations.telemetry.build_opener") as opener:
             opener.return_value.open.return_value = io.BytesIO(b'{"state":{"number":2}}')
             self.assertEqual(read_snapshot()["state"]["number"], 2)
             opener.return_value.open.return_value = io.BytesIO(b'[]')
@@ -263,7 +263,7 @@ class ReadSnapshotTests(unittest.TestCase):
                 read_snapshot()
 
     def test_oversized_response_is_rejected(self):
-        with patch("telemetry.build_opener") as opener:
+        with patch("osu_coach.integrations.telemetry.build_opener") as opener:
             opener.return_value.open.return_value = io.BytesIO(b" " * (MAX_RESPONSE_BYTES + 1))
             with self.assertRaises(ValueError):
                 read_snapshot()

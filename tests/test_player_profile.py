@@ -3,7 +3,7 @@ from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 import unittest
 
-from player_profile import build_player_profile
+from osu_coach.core.player_profile import build_player_profile
 
 
 NOW = datetime(2026, 9, 8, 20, tzinfo=timezone.utc)

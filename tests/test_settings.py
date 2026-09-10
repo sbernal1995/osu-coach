@@ -11,10 +11,10 @@ from unittest.mock import Mock, patch
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-from app import Coach, Handler, ThreadingHTTPServer
-from discovery_source import candidate_quality_ok, parse_candidates
-from discovery_store import DiscoveryStore
-from settings import DEFAULTS, SCHEMA, get_setting, settings_context, validate_settings
+from osu_coach.app import Coach, Handler, ThreadingHTTPServer
+from osu_coach.integrations.discovery_source import candidate_quality_ok, parse_candidates
+from osu_coach.storage.discovery_store import DiscoveryStore
+from osu_coach.settings import DEFAULTS, SCHEMA, get_setting, settings_context, validate_settings
 from tests.test_discovery_source import beatmapset
 from tests.test_discovery_store import beatmap
 
@@ -93,7 +93,7 @@ class SettingsAppTests(unittest.TestCase):
     def test_failed_validation_or_persistence_leaves_settings_and_file_unchanged(self):
         before = Path(self.temp.name, 'config.json').read_bytes()
         with self.assertRaises(ValueError): self.coach.update_settings({'quality_min_rating': -1})
-        with patch('app.save_json', side_effect=OSError('cannot write')):
+        with patch('osu_coach.app.save_json', side_effect=OSError('cannot write')):
             with self.assertRaises(OSError): self.coach.update_settings({'quality_min_rating': 9})
         self.assertEqual(DEFAULTS, self.coach.settings)
         self.assertEqual(before, Path(self.temp.name, 'config.json').read_bytes())
@@ -168,10 +168,10 @@ class SettingsDiscoveryTests(unittest.TestCase):
         self.store.set_settings(validate_settings({'discovery_interval_hours':2,'discovery_retry_minutes':4}))
         batch=Mock(return_value={'maps':[beatmap()], 'next_cursor':{'page':2}, 'exhausted':False})
         self.store.batch_fetcher=batch
-        with patch('discovery_store.time.time', return_value=now):
+        with patch('osu_coach.storage.discovery_store.time.time', return_value=now):
             self.assertTrue(self.store.sync(4.5)); self.store.thread.join(3)
-        with patch('discovery_store.time.time', return_value=now+7199): self.assertFalse(self.store.sync(4.5))
-        with patch('discovery_store.time.time', return_value=now+7200):
+        with patch('osu_coach.storage.discovery_store.time.time', return_value=now+7199): self.assertFalse(self.store.sync(4.5))
+        with patch('osu_coach.storage.discovery_store.time.time', return_value=now+7200):
             self.assertTrue(self.store.sync(4.5,needs=[{'min_stars':4.2,'max_stars':4.7}]))
             self.store.thread.join(3)
         self.assertEqual(now+7200+240,self.store.demand_retry_at)

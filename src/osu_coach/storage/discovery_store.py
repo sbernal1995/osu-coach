@@ -9,8 +9,8 @@ from pathlib import Path
 import threading
 import time
 
-from discovery_source import candidate_quality_ok, MIN_RATING, MIN_RATING_VOTES, MIN_PLAY_COUNT
-from settings import DEFAULTS, coach_settings, settings_context, get_setting
+from osu_coach.integrations.discovery_source import candidate_quality_ok, MIN_RATING, MIN_RATING_VOTES, MIN_PLAY_COUNT
+from osu_coach.settings import DEFAULTS, coach_settings, settings_context, get_setting
 
 
 INTERVAL = 24 * 3600
@@ -223,7 +223,7 @@ class DiscoveryStore:
                     if self.batch_fetcher is not None:
                         fetch = self.batch_fetcher
                     elif self.fetcher is None:
-                        from discovery_source import fetch_candidate_batch
+                        from osu_coach.integrations.discovery_source import fetch_candidate_batch
                         fetch = fetch_candidate_batch
                     else:
                         fetch = None
@@ -240,7 +240,7 @@ class DiscoveryStore:
                         raise ValueError("La búsqueda no indicó cómo continuar el recorrido.")
                 else:
                     if self.fetcher is None:
-                        from discovery_source import fetch_candidates
+                        from osu_coach.integrations.discovery_source import fetch_candidates
                         fetch = fetch_candidates
                     else:
                         fetch = self.fetcher

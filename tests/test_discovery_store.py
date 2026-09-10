@@ -7,7 +7,7 @@ import threading
 import unittest
 from unittest.mock import Mock, patch
 
-from discovery_store import DiscoveryStore, INTERVAL, RETRY_DELAY, ERROR_RETRY_DELAY, compatible
+from osu_coach.storage.discovery_store import DiscoveryStore, INTERVAL, RETRY_DELAY, ERROR_RETRY_DELAY, compatible
 
 
 NOW = 2_000_000_000
@@ -33,7 +33,7 @@ class DiscoveryStoreTests(unittest.TestCase):
         self.temp.cleanup()
 
     def sync(self, baseline=4.5, sample=None, force=False, epoch=NOW):
-        with patch("discovery_store.time.time", return_value=epoch):
+        with patch("osu_coach.storage.discovery_store.time.time", return_value=epoch):
             started = self.store.sync(baseline, sample, force=force)
             if self.store.thread:
                 self.store.thread.join(2)
@@ -47,7 +47,7 @@ class DiscoveryStoreTests(unittest.TestCase):
         self.assertEqual(restored.candidates([]), [beatmap()])
         self.assertEqual(restored.fetched_epoch, NOW)
         self.assertEqual(restored.baseline, 4.5)
-        with patch("discovery_store.time.time", return_value=NOW + 61):
+        with patch("osu_coach.storage.discovery_store.time.time", return_value=NOW + 61):
             self.assertFalse(restored.sync(4.5))
         self.assertEqual(self.fetch.call_count, 1)
         persisted = json.loads(Path(self.temp.name, "discovery.json").read_text(encoding="utf-8"))
@@ -161,7 +161,7 @@ class DiscoveryStoreTests(unittest.TestCase):
             return [beatmap()]
         self.store.fetcher = fetch
         try:
-            with patch("discovery_store.time.time", return_value=NOW):
+            with patch("osu_coach.storage.discovery_store.time.time", return_value=NOW):
                 self.assertTrue(self.store.sync(4.5))
                 self.assertTrue(started.wait(2))
                 self.store.stop.set()
@@ -180,7 +180,7 @@ class DiscoveryStoreTests(unittest.TestCase):
                 Path(self.temp.name, "discovery.json").write_text(bad, encoding="utf-8")
                 restored = DiscoveryStore(self.temp.name, fetcher=self.fetch)
                 self.assertEqual(restored.snapshot([])["state"], "error")
-                with patch("discovery_store.time.time", return_value=NOW):
+                with patch("osu_coach.storage.discovery_store.time.time", return_value=NOW):
                     self.assertTrue(restored.sync(4.5))
                     restored.thread.join(2)
                 self.assertEqual(restored.status["state"], "ready")
@@ -224,7 +224,7 @@ class DiscoveryStoreTests(unittest.TestCase):
         self.assertEqual([], restored.candidates([]))
         self.assertEqual({}, restored.search)
         self.assertEqual(0, restored.demand_retry_at)
-        with patch("discovery_store.time.time", return_value=NOW + 1):
+        with patch("osu_coach.storage.discovery_store.time.time", return_value=NOW + 1):
             self.assertTrue(restored.sync(4.5))
             restored.thread.join(2)
         self.assertEqual([beatmap()], restored.candidates([]))

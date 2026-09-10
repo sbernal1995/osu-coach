@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import catalog
+from osu_coach.beatmaps import catalog
 
 try:
     import rosu_pp_py as rosu

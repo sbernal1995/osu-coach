@@ -2,8 +2,8 @@
 
 import unittest
 
-from telemetry import TosuTracker
-from test_telemetry import NOW, snapshot, timestamp
+from osu_coach.integrations.telemetry import TosuTracker
+from tests.test_telemetry import NOW, snapshot, timestamp
 
 
 class QuestTelemetryTests(unittest.TestCase):

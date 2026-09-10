@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "osu-coach"
+version = "0.1.0"
+description = "Entrenador local de osu!standard basado en partidas recientes."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{name = "osu! coach contributors"}]
+keywords = ["osu", "training", "rhythm-game"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Games/Entertainment",
+]
+dynamic = ["dependencies"]
+
+[project.urls]
+Repository = "https://github.com/sbernal1995/osu-coach"
+Issues = "https://github.com/sbernal1995/osu-coach/issues"
+
+[project.scripts]
+osu-coach = "osu_coach.app:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = false
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["osu_coach", "osu_coach.*"]
+namespaces = false
+
+[tool.setuptools.package-data]
+osu_coach = ["web/index.html"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}

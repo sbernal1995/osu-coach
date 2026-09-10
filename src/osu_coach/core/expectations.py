@@ -10,10 +10,10 @@ from datetime import datetime, timezone
 import math
 from statistics import median
 
-from grades import target_grade
-from tag_analysis import skill_tags
-from evidence import setting_text
-from settings import get_setting
+from osu_coach.core.grades import target_grade
+from osu_coach.core.tag_analysis import skill_tags
+from osu_coach.core.evidence import setting_text
+from osu_coach.settings import get_setting
 
 
 

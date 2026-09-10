@@ -7,10 +7,10 @@ from types import SimpleNamespace
 import tempfile
 import unittest
 
-import app
-import engine
-from expectations import expectation_for
-from grades import target_grade
+from osu_coach import app
+from osu_coach.core import engine
+from osu_coach.core.expectations import expectation_for
+from osu_coach.core.grades import target_grade
 
 
 NOW = datetime.now(timezone.utc)

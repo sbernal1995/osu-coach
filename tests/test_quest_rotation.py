@@ -10,7 +10,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import app
+from osu_coach import app
 
 
 class QuestRotationTests(unittest.TestCase):
@@ -35,7 +35,7 @@ class QuestRotationTests(unittest.TestCase):
         app.save_json(self.coach.config_path, self.coach.config)
         for index in range(5):
             self.coach.add_play(self.seed_play(index))
-        with patch("quest_store.utcnow", return_value=(self.now - timedelta(seconds=2)).isoformat()):
+        with patch("osu_coach.storage.quest_store.utcnow", return_value=(self.now - timedelta(seconds=2)).isoformat()):
             self.initial = self.coach.state()["quest_board"]
 
     def tearDown(self):

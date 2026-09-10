@@ -6,8 +6,8 @@ import tempfile
 import unittest
 from unittest.mock import Mock
 
-from app import Coach, DEFAULT_MOD_KEY
-from engine import recommend
+from osu_coach.app import Coach, DEFAULT_MOD_KEY
+from osu_coach.core.engine import recommend
 from tests.test_discovery_integration import beatmap, profile
 
 

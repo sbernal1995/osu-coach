@@ -3,7 +3,7 @@ from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 import unittest
 
-from expectations import expectation_for
+from osu_coach.core.expectations import expectation_for
 
 
 NOW = datetime(2026, 9, 8, 20, tzinfo=timezone.utc)
@@ -210,7 +210,7 @@ class ExpectationTests(unittest.TestCase):
     def test_fresh_client_and_mods_are_forwarded_to_grade_rules(self):
         from unittest.mock import patch
         active = profile([play(1, client="stable", mods=[{"acronym": "HD"}])])
-        with patch("expectations.target_grade", return_value={"grade": "A", "label": "A o mejor"}) as grade:
+        with patch("osu_coach.core.expectations.target_grade", return_value={"grade": "A", "label": "A o mejor"}) as grade:
             result = expectation_for(beatmap(), active, "practice")
         grade.assert_called_once_with("stable", result["accuracy_min"], result["misses_max"], [{"acronym": "HD"}])
 

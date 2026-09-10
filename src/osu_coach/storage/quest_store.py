@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 import json
 import uuid
 
-from quest_rules import evaluate_attempt
+from osu_coach.core.quest_rules import evaluate_attempt
 
 
 def utcnow():

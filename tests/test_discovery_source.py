@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import Mock, patch
 from urllib.error import HTTPError, URLError
 
-import discovery_source as source
+from osu_coach.integrations import discovery_source as source
 
 
 def beatmap(map_id=120, set_id=12, **changes):

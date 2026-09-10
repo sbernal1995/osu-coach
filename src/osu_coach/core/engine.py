@@ -7,10 +7,10 @@ import math
 from statistics import mean
 from urllib.parse import urlencode
 
-from expectations import expectation_for
-from settings import get_setting
-from map_search import search_details
-from evidence import (recency_weight, weighted_mean, trimmed_weighted_mean, play_time,
+from osu_coach.core.expectations import expectation_for
+from osu_coach.settings import get_setting
+from osu_coach.beatmaps.map_search import search_details
+from osu_coach.core.evidence import (recency_weight, weighted_mean, trimmed_weighted_mean, play_time,
                       setting_text, reference_settings_signature)
 
 
@@ -325,7 +325,7 @@ def recommend(catalog, profile, limit=3, tag_analysis=None, player_profile=None,
             if not window:
                 penalty += max(0, number(m.get("length")) - 150) / 120
             if tag_analysis:
-                from tag_analysis import tag_priority
+                from osu_coach.core.tag_analysis import tag_priority
                 adjustment, _ = tag_priority(m, tag_analysis, effective_stage)
                 penalty += adjustment
             candidates.append((penalty, key, m))
@@ -348,7 +348,7 @@ def recommend(catalog, profile, limit=3, tag_analysis=None, player_profile=None,
             result.update(reason=f"{number(m['stars']):.2f} ★, cerca del objetivo de {target:.2f} ★.",
                           expectation=expected, goal=personal_goal + ".", **search_details(m))
             if tag_analysis:
-                from tag_analysis import tag_priority
+                from osu_coach.core.tag_analysis import tag_priority
                 _, tag_reason = tag_priority(m, tag_analysis, effective_stage)
                 if tag_reason:
                     result["reason"] += " " + tag_reason

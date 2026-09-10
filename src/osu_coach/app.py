@@ -1,4 +1,4 @@
-"""Local osu! training companion. Run: python app.py [--demo] [--no-browser]."""
+"""Local osu! training companion. Run: python -m osu_coach [--demo] [--no-browser]."""
 from __future__ import annotations
 
 import argparse
@@ -18,20 +18,21 @@ from urllib.parse import urlsplit
 from urllib.request import urlopen
 import webbrowser
 
-from engine import assess, recommend, number, apply_player_profile, timestamp, physical_limits
-from player_profile import build_player_profile
-from quest_store import QuestStore, scope_key, map_tokens, is_remote
-from progress_store import ProgressStore
-from discovery_store import DiscoveryStore
-from discovery_source import candidate_quality_ok
-from tag_analysis import analyze_tags, skill_tags
-from tag_store import TagStore
-from telemetry import TosuTracker, read_snapshot
-from map_search import search_details
-from played_history import PlayedHistory
-from settings import validate_settings, settings_snapshot, coach_settings, get_setting, DEFAULTS
+from osu_coach.core.engine import assess, recommend, number, apply_player_profile, timestamp, physical_limits
+from osu_coach.core.player_profile import build_player_profile
+from osu_coach.storage.quest_store import QuestStore, scope_key, map_tokens, is_remote
+from osu_coach.storage.progress_store import ProgressStore
+from osu_coach.storage.discovery_store import DiscoveryStore
+from osu_coach.integrations.discovery_source import candidate_quality_ok
+from osu_coach.core.tag_analysis import analyze_tags, skill_tags
+from osu_coach.storage.tag_store import TagStore
+from osu_coach.integrations.telemetry import TosuTracker, read_snapshot
+from osu_coach.beatmaps.map_search import search_details
+from osu_coach.core.played_history import PlayedHistory
+from osu_coach.settings import validate_settings, settings_snapshot, coach_settings, get_setting, DEFAULTS
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path.cwd()
+PACKAGE_ROOT = Path(__file__).resolve().parent
 DEFAULT_MOD_KEY = '{"mods":[],"rate":1.0}'
 
 
@@ -103,7 +104,7 @@ class Coach:
         self.child = None
         self.child_log = None
         if args.demo:
-            from demo import demo_data
+            from osu_coach.demo import demo_data
             self.catalog, samples = demo_data()
             for sample in samples:
                 self.add_play(sample)
@@ -276,7 +277,7 @@ class Coach:
             self.scanning, self.scan_count, self.scan_error = True, 0, ""
         def work():
             try:
-                from catalog import scan_catalog
+                from osu_coach.beatmaps.catalog import scan_catalog
                 root = self.config["maps_path"]
                 if not Path(root).is_dir():
                     raise ValueError("Elegí la carpeta de mapas con --maps. No encontré la carpeta habitual de osu!.")
@@ -381,7 +382,7 @@ class Coach:
         catalog_reference = self.catalog
         maps = copy.deepcopy(self.catalog)
         def adjust():
-            from catalog import difficulty_for
+            from osu_coach.beatmaps.catalog import difficulty_for
             changed = []
             for beatmap in maps:
                 if self.stop.is_set():
@@ -582,7 +583,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/state":
             return self.send(200, self.server.coach.state())
         if path == "/":
-            return self.send(200, (ROOT / "web" / "index.html").read_bytes(), "text/html; charset=utf-8")
+            return self.send(200, (PACKAGE_ROOT / "web" / "index.html").read_bytes(), "text/html; charset=utf-8")
         return self.send(404, {"error": "Ruta desconocida."})
 
     def do_POST(self):

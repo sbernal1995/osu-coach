@@ -4,7 +4,7 @@ import copy
 from datetime import datetime, timedelta, timezone
 import unittest
 
-from quest_rules import evaluate_attempt
+from osu_coach.core.quest_rules import evaluate_attempt
 
 
 NOW = datetime(2026, 9, 9, 10, 0, tzinfo=timezone.utc)

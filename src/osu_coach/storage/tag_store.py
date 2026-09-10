@@ -77,7 +77,7 @@ class TagStore:
         enriched = self.enrich(maps)
         with self.lock:
             state = dict(self.status)
-        from tag_analysis import skill_tags
+        from osu_coach.core.tag_analysis import skill_tags
         state.update(tagged_maps=sum(bool(skill_tags(m)) for m in enriched),
                      known_maps=sum(m.get("tag_status") != "missing" for m in enriched),
                      weak_votes_maps=sum(m.get("tag_status") == "weak" for m in enriched),
@@ -125,7 +125,7 @@ class TagStore:
         def worker():
             failures = []
             if self.fetcher is None:
-                from tag_source import fetch_set_tags
+                from osu_coach.integrations.tag_source import fetch_set_tags
                 fetch = fetch_set_tags
             else:
                 fetch = self.fetcher

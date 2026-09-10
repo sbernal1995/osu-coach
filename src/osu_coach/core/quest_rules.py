@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 import math
 import re
 
-from grades import evaluate_grade, normalize_grade
+from osu_coach.core.grades import evaluate_grade, normalize_grade
 
 
 _HASH = re.compile(r"(?:[0-9a-f]{32}|[0-9a-f]{40}|[0-9a-f]{64})\Z")

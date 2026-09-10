@@ -9,10 +9,10 @@ import copy
 from datetime import datetime, timedelta, timezone
 import math
 
-from engine import assess, number, timestamp
-from progress_rules import rank_evidence
-from evidence import reference_settings_signature, setting_text
-from settings import get_setting
+from osu_coach.core.engine import assess, number, timestamp
+from osu_coach.core.progress_rules import rank_evidence
+from osu_coach.core.evidence import reference_settings_signature, setting_text
+from osu_coach.settings import get_setting
 
 
 METHOD_VERSION = 2

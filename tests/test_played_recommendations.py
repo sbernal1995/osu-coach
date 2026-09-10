@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import app
+from osu_coach import app
 
 
 class PlayedRecommendationsTests(unittest.TestCase):
@@ -72,7 +72,7 @@ class PlayedRecommendationsTests(unittest.TestCase):
         return result
 
     def board(self):
-        with patch("quest_store.utcnow", return_value=(self.now - timedelta(seconds=2)).isoformat()):
+        with patch("osu_coach.storage.quest_store.utcnow", return_value=(self.now - timedelta(seconds=2)).isoformat()):
             return self.coach.state()["quest_board"]
 
     @staticmethod

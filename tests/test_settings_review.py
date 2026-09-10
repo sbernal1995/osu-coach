@@ -8,10 +8,10 @@ import threading
 import unittest
 from unittest.mock import Mock, patch
 
-from app import Coach
-from discovery_store import DiscoveryStore
-from engine import apply_player_profile, recommend
-from settings import DEFAULTS, get_setting, settings_context, validate_settings
+from osu_coach.app import Coach
+from osu_coach.storage.discovery_store import DiscoveryStore
+from osu_coach.core.engine import apply_player_profile, recommend
+from osu_coach.settings import DEFAULTS, get_setting, settings_context, validate_settings
 from tests.test_discovery_store import beatmap
 
 
@@ -118,7 +118,7 @@ class SettingsDiscoveryReviewTests(unittest.TestCase):
 class SettingsCoachIsolationReviewTests(unittest.TestCase):
     def test_two_coaches_keep_state_and_background_filters_separate(self):
         coaches = []
-        with tempfile.TemporaryDirectory() as directory, patch("app.detect_maps", return_value=None):
+        with tempfile.TemporaryDirectory() as directory, patch("osu_coach.app.detect_maps", return_value=None):
             try:
                 for index, settings in enumerate((
                     {"initial_stars": 2.0, "reference_plays": 60, "quality_min_rating": 8.0},

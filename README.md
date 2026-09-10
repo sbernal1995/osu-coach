@@ -34,16 +34,18 @@ La demo y las pruebas pueden ejecutarse con Python sin tener osu! o tosu instala
    cd osu-coach
    ```
 
-3. En Windows, abrí `iniciar.cmd`. Crea un entorno `.venv`, instala las dependencias fijadas y abre el panel en [127.0.0.1:8765](http://127.0.0.1:8765/). La primera instalación de dependencias necesita Internet.
+3. En Windows, abrí `iniciar.cmd`. Crea un entorno `.venv`, instala este proyecto en modo editable con sus dependencias y abre el panel en [127.0.0.1:8765](http://127.0.0.1:8765/). La primera instalación necesita Internet.
 
 Para preparar el entorno manualmente:
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -e .
 ```
 
-En Linux o macOS, el equivalente es `python3 -m venv .venv` y `.venv/bin/python -m pip install -r requirements.txt`. La [documentación de Python explica los entornos virtuales](https://docs.python.org/3/library/venv.html).
+En Linux o macOS, el equivalente es `python3 -m venv .venv` y `.venv/bin/python -m pip install -e .`. La [documentación de Python explica los entornos virtuales](https://docs.python.org/3/library/venv.html).
+
+Ejecutá la instalación desde la carpeta del repositorio. El comando del programa es **`python -m osu_coach`** con el Python del entorno instalado; también se crea el comando `osu-coach`. La instalación editable permite aplicar los cambios de `src/osu_coach/` al volver a abrir el programa.
 
 ### Probar primero la demo
 
@@ -54,8 +56,10 @@ En Linux o macOS, el equivalente es `python3 -m venv .venv` y `.venv/bin/python 
 O, con el entorno ya instalado:
 
 ```powershell
-.\.venv\Scripts\python.exe app.py --demo --port 8766
+.\.venv\Scripts\python.exe -m osu_coach --demo --port 8766
 ```
+
+En Linux o macOS: `.venv/bin/python -m osu_coach --demo --port 8766`.
 
 Abrí [127.0.0.1:8766](http://127.0.0.1:8766/). La demo crea mapas y partidas ficticios en `data/demo/`, separados de `data/live/`. No inicia tosu ni las consultas automáticas de mapas y tags. Las demostraciones no incluyen canciones, replays ni puntuaciones personales.
 
@@ -109,6 +113,8 @@ Para lazer, elegí su carpeta `files`; para stable, `Songs`. El lector abre arch
 
 El servidor de tosu debe ser local. Las carpetas y la conexión se eligen mediante estas opciones de inicio.
 
+`data/` y `vendor/` se resuelven desde la carpeta donde iniciás el programa. `iniciar.cmd` se sitúa siempre en la carpeta del repositorio, por lo que conserva las ubicaciones de las versiones anteriores. Con `python -m osu_coach`, ejecutá desde esa misma carpeta para recuperar tus datos; `--data-dir` permite elegir una ubicación explícita.
+
 ## Configurar el entrenamiento
 
 En el panel, abrí **Configuración**. Cada criterio muestra su explicación, valor actual y límites admitidos. Ajustá los valores y pulsá **Guardar ajustes**. **Restaurar valores iniciales** recupera la configuración de partida.
@@ -151,7 +157,7 @@ La fuente pública tiene cobertura limitada y puede cambiar de formato. El panel
 
 ## Datos y privacidad
 
-El coach guarda localmente la configuración, el catálogo, las partidas aceptadas, las misiones y el progreso. La carpeta habitual es `data/live/`; copiá esa carpeta para hacer una copia de seguridad con la aplicación cerrada.
+El coach guarda localmente la configuración, el catálogo, las partidas aceptadas, las misiones y el progreso. La carpeta habitual es `data/live/`, relativa a la carpeta de inicio; copiá esa carpeta para hacer una copia de seguridad con la aplicación cerrada.
 
 Las consultas públicas de mapas y tags envían identificadores públicos de conjuntos y parámetros de paginación. El rendimiento, el nombre del jugador, las listas de exclusión y los criterios de entrenamiento se procesan localmente. El coach no pide credenciales de osu! ni usa un servicio de análisis externo.
 
@@ -180,11 +186,14 @@ Las consultas públicas de mapas y tags envían identificadores públicos de con
 
 ## Desarrollo y pruebas
 
+El código está organizado en `src/osu_coach/`. La [guía de arquitectura](docs/ARQUITECTURA.md) explica los paquetes y sus responsabilidades. Instalá el proyecto antes de ejecutar las pruebas:
+
 ```powershell
+.\.venv\Scripts\python.exe -m pip install -e .
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-Las pruebas usan datos ficticios, carpetas temporales y respuestas públicas simuladas. Algunas pruebas de integración abren un servidor HTTP local temporal. No requieren osu!, tosu ni credenciales. El flujo de GitHub Actions instala las dependencias y ejecuta las pruebas en Windows y Linux con Python 3.11 y 3.12.
+Las pruebas usan datos ficticios, carpetas temporales y respuestas públicas simuladas. Algunas pruebas de integración abren un servidor HTTP local temporal. No requieren osu!, tosu ni credenciales. El flujo de GitHub Actions instala el proyecto y ejecuta las pruebas en Windows y Linux con Python 3.11 y 3.12.
 
 Para contribuir, describí el comportamiento esperado y un caso reproducible con datos ficticios. Evitá adjuntar bases de datos, capturas con nombres personales o logs completos. La [guía de publicación](docs/PUBLICACION.md) detalla los archivos que forman parte del proyecto.
 

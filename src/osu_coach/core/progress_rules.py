@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation, ROUND_FLOOR, ROUND_HALF_UP
 
-from evidence import setting_text
-from settings import get_setting
+from osu_coach.core.evidence import setting_text
+from osu_coach.settings import get_setting
 
 
 MIN_RANK = Decimal("0.5")

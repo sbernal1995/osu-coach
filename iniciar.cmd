@@ -22,14 +22,14 @@ if errorlevel 1 goto failed
 :check_environment
 ".venv\Scripts\python.exe" -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)" >nul 2>&1
 if errorlevel 1 goto old_environment
-".venv\Scripts\python.exe" -c "from importlib.metadata import version; from pathlib import Path; specs=[line.strip().split('==', 1) for line in Path('requirements.txt').read_text().splitlines() if line.strip() and not line.lstrip().startswith('#')]; assert all(version(name)==expected for name,expected in specs)" >nul 2>&1
+".venv\Scripts\python.exe" -c "from importlib.metadata import distribution, version; from importlib.util import find_spec; from pathlib import Path; import json, sys, tomllib; root=Path.cwd().resolve(); metadata=tomllib.loads(Path('pyproject.toml').read_text(encoding='utf-8')); installed=distribution('osu-coach'); direct=json.loads(installed.read_text('direct_url.json') or '{}'); package=find_spec('osu_coach'); specs=[line.strip().split('==', 1) for line in Path('requirements.txt').read_text().splitlines() if line.strip() and not line.lstrip().startswith('#')]; ok=direct.get('dir_info', {}).get('editable') is True and package is not None and package.origin is not None and Path(package.origin).resolve()==root/'src'/'osu_coach'/'__init__.py' and installed.version==metadata['project']['version'] and all(version(name)==expected for name,expected in specs); sys.exit(0 if ok else 1)" >nul 2>&1
 if not errorlevel 1 goto run
-echo Instalando las dependencias de requirements.txt...
-".venv\Scripts\python.exe" -m pip install -r requirements.txt
+echo Instalando osu! coach y sus dependencias...
+".venv\Scripts\python.exe" -m pip install -e .
 if errorlevel 1 goto failed
 
 :run
-".venv\Scripts\python.exe" app.py %*
+".venv\Scripts\python.exe" -m osu_coach %*
 if errorlevel 1 goto failed
 exit /b 0
 

@@ -2,7 +2,7 @@
 
 import unittest
 
-from grades import evaluate_grade, normalize_grade, target_grade
+from osu_coach.core.grades import evaluate_grade, normalize_grade, target_grade
 
 
 def lazer(accuracy, misses=0, **changes):

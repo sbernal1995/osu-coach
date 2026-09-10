@@ -2,7 +2,7 @@
 from copy import deepcopy
 import unittest
 
-from map_search import search_details
+from osu_coach.beatmaps.map_search import search_details
 
 
 class MapSearchTests(unittest.TestCase):

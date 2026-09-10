@@ -5,7 +5,7 @@ import json
 import unittest
 
 from tests import test_played_recommendations as fixtures
-import app
+from osu_coach import app
 
 
 def quality(**changes):

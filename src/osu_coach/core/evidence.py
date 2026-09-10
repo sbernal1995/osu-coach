@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import math
 import hashlib
 import json
-from settings import get_setting
+from osu_coach.settings import get_setting
 
 REFERENCE_PLAYS = 100
 REFERENCE_DAYS = 30

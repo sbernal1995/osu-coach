@@ -3,8 +3,8 @@ from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 import unittest
 
-import engine
-from tag_analysis import analyze_tags
+from osu_coach.core import engine
+from osu_coach.core.tag_analysis import analyze_tags
 
 
 NOW = datetime(2026, 9, 8, 20, tzinfo=timezone.utc)

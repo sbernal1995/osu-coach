@@ -11,8 +11,8 @@ from unittest.mock import Mock, patch
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-from app import Coach, Handler, ThreadingHTTPServer
-import engine
+from osu_coach.app import Coach, Handler, ThreadingHTTPServer
+from osu_coach.core import engine
 
 
 def beatmap(index, *, online=False, stars=3.0, **changes):

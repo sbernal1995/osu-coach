@@ -3,7 +3,7 @@ from copy import deepcopy
 from datetime import datetime, timezone
 import unittest
 
-from played_history import PlayedHistory
+from osu_coach.core.played_history import PlayedHistory
 
 
 def beatmap(index=1, **changes):

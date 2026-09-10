@@ -10,9 +10,9 @@ from collections import Counter, defaultdict
 from datetime import datetime, timezone
 import math
 
-from tag_analysis import TAG_NAMES
-from evidence import recency_weight, session_ids, weighted_mean, setting_text
-from settings import get_setting
+from osu_coach.core.tag_analysis import TAG_NAMES
+from osu_coach.core.evidence import recency_weight, session_ids, weighted_mean, setting_text
+from osu_coach.settings import get_setting
 
 
 

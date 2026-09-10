@@ -2,8 +2,8 @@
 from datetime import timedelta
 import unittest
 
-import engine
-from evidence import recency_weight, session_ids, session_count, trimmed_weighted_mean
+from osu_coach.core import engine
+from osu_coach.core.evidence import recency_weight, session_ids, session_count, trimmed_weighted_mean
 from tests.test_engine import NOW, play, beatmap
 
 

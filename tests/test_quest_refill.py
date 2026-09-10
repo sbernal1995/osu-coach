@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
-from quest_store import QuestStore, scope_key, map_tokens
+from osu_coach.storage.quest_store import QuestStore, scope_key, map_tokens
 
 
 class QuestRefillTests(unittest.TestCase):
@@ -54,7 +54,7 @@ class QuestRefillTests(unittest.TestCase):
                                      replacement_provider=provider, skip_predicate=skip)
 
     def create(self, groups):
-        with patch("quest_store.utcnow", return_value=self.assigned):
+        with patch("osu_coach.storage.quest_store.utcnow", return_value=self.assigned):
             return self.ensure(groups)
 
     def result(self, quest, **changes):

@@ -9,8 +9,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import app
-import engine
+from osu_coach import app
+from osu_coach.core import engine
 
 
 NOW = datetime(2026, 9, 8, 18, 0, tzinfo=timezone.utc)
@@ -253,8 +253,8 @@ class LocalProfileTests(unittest.TestCase):
         sample = play(0, client="stable", mods=[{"acronym": "DT"}],
                       mod_key='{"mods":[{"acronym":"DT"}],"rate":1.2}')
         self.coach.catalog = [beatmap(0)]
-        with patch("app.threading.Thread", InlineThread):
-            with patch("catalog.difficulty_for", return_value={"stars": 3.5}) as calculate:
+        with patch("osu_coach.app.threading.Thread", InlineThread):
+            with patch("osu_coach.beatmaps.catalog.difficulty_for", return_value={"stars": 3.5}) as calculate:
                 self.coach.catalog_for(sample)
         calculate.assert_called_once()
         self.assertEqual(calculate.call_args.kwargs.get("clock_rate"), 1.2)
@@ -264,8 +264,8 @@ class LocalProfileTests(unittest.TestCase):
         sample = play(0, client="stable", mods=[{"acronym": "HR"}],
                       mod_key='{"mods":[{"acronym":"HR"}],"rate":1.0}')
         self.coach.catalog = [beatmap(0)]
-        with patch("app.threading.Thread", InlineThread):
-            with patch("catalog.difficulty_for", return_value={"stars": 3.5}) as calculate:
+        with patch("osu_coach.app.threading.Thread", InlineThread):
+            with patch("osu_coach.beatmaps.catalog.difficulty_for", return_value={"stars": 3.5}) as calculate:
                 self.coach.catalog_for(sample)
                 self.coach.catalog_for({**sample, "client": "lazer"})
         self.assertEqual(calculate.call_count, 2)
@@ -273,8 +273,8 @@ class LocalProfileTests(unittest.TestCase):
     def test_custom_speed_without_mod_acronym_still_recalculates_maps(self):
         self.coach.catalog = [beatmap(0)]
         sample = play(0, mods=[], mod_key='{"mods":[],"rate":1.2}')
-        with patch("app.threading.Thread", InlineThread):
-            with patch("catalog.difficulty_for", return_value={"stars": 3.5}) as calculate:
+        with patch("osu_coach.app.threading.Thread", InlineThread):
+            with patch("osu_coach.beatmaps.catalog.difficulty_for", return_value={"stars": 3.5}) as calculate:
                 self.coach.catalog_for(sample)
         calculate.assert_called_once()
         self.assertEqual(calculate.call_args.kwargs.get("clock_rate"), 1.2)
@@ -291,11 +291,11 @@ class LocalProfileTests(unittest.TestCase):
                       mod_key='{"mods":[{"acronym":"DT"}],"rate":1.5}')
         self.coach.catalog = [old_map]
         self.coach.config["maps_path"] = self.tmp.name
-        with patch("app.threading.Thread", QueuedThread):
-            with patch("catalog.difficulty_for", return_value={"stars": 3.5}):
+        with patch("osu_coach.app.threading.Thread", QueuedThread):
+            with patch("osu_coach.beatmaps.catalog.difficulty_for", return_value={"stars": 3.5}):
                 self.coach.catalog_for(sample)
                 self.coach.rescan()
-                with patch("catalog.scan_catalog", return_value=[new_map]):
+                with patch("osu_coach.beatmaps.catalog.scan_catalog", return_value=[new_map]):
                     pending[1]()  # El nuevo catálogo termina antes que el cálculo viejo.
                 pending[0]()
                 result, _ = self.coach.catalog_for(sample)

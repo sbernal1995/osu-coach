@@ -5,14 +5,14 @@ from datetime import datetime, timedelta, timezone
 import sqlite3
 import unittest
 
-import engine
-from evidence import recency_weight, session_count, reference_settings_signature
-from expectations import expectation_for
-from player_profile import build_player_profile
-from progress_rules import rank_evidence
-from progress_store import ProgressStore
-from settings import settings_context, validate_settings
-from tag_analysis import analyze_tags
+from osu_coach.core import engine
+from osu_coach.core.evidence import recency_weight, session_count, reference_settings_signature
+from osu_coach.core.expectations import expectation_for
+from osu_coach.core.player_profile import build_player_profile
+from osu_coach.core.progress_rules import rank_evidence
+from osu_coach.storage.progress_store import ProgressStore
+from osu_coach.settings import settings_context, validate_settings
+from osu_coach.core.tag_analysis import analyze_tags
 
 
 NOW = datetime.now(timezone.utc)

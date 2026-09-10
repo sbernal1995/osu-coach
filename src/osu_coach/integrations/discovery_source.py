@@ -23,7 +23,7 @@ import math
 import threading
 import time
 
-from settings import get_setting
+from osu_coach.settings import get_setting
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
@@ -426,7 +426,7 @@ class DiscoverySourceClient:
             verified = parse_set_page(page, beatmapset["id"])
             # The same public page also carries per-difficulty community tags.
             # Their absence should not discard otherwise verified rating data.
-            from tag_source import TagSourceError, parse_set_tags
+            from osu_coach.integrations.tag_source import TagSourceError, parse_set_tags
             try:
                 tags = parse_set_tags(page, beatmapset["id"])
             except (TagSourceError, ValueError):

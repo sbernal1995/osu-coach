@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta, timezone
 import unittest
 
-from tag_analysis import analyze_tags, skill_tags, tag_priority, TAG_NAMES
+from osu_coach.core.tag_analysis import analyze_tags, skill_tags, tag_priority, TAG_NAMES
 
 
 NOW = datetime(2026, 9, 8, 19, tzinfo=timezone.utc)

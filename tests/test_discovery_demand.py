@@ -8,7 +8,7 @@ import threading
 import unittest
 from unittest.mock import Mock, patch
 
-from discovery_store import DiscoveryStore, ERROR_RETRY_DELAY, EXHAUSTED_RETRY_DELAY
+from osu_coach.storage.discovery_store import DiscoveryStore, ERROR_RETRY_DELAY, EXHAUSTED_RETRY_DELAY
 
 
 NOW = 2_000_000_000
@@ -44,7 +44,7 @@ class DiscoveryDemandTests(unittest.TestCase):
         self.temp.cleanup()
 
     def sync(self, *, epoch=NOW, needs=None, sample=None, exclude_ids=(), force=False):
-        with patch("discovery_store.time.time", return_value=epoch):
+        with patch("osu_coach.storage.discovery_store.time.time", return_value=epoch):
             started = self.store.sync(4.5, self.sample if sample is None else sample,
                                       force=force, needs=self.needs if needs is None else needs,
                                       exclude_ids=exclude_ids)
@@ -54,7 +54,7 @@ class DiscoveryDemandTests(unittest.TestCase):
             return started
 
     def snapshot(self, epoch=NOW, needs=None, sample=None):
-        with patch("discovery_store.time.time", return_value=epoch):
+        with patch("osu_coach.storage.discovery_store.time.time", return_value=epoch):
             return self.store.snapshot([], self.sample if sample is None else sample,
                                        needs=self.needs if needs is None else needs)
 
@@ -103,13 +103,13 @@ class DiscoveryDemandTests(unittest.TestCase):
 
         self.store.batch_fetcher = fetch
         try:
-            with patch("discovery_store.time.time", return_value=NOW):
+            with patch("osu_coach.storage.discovery_store.time.time", return_value=NOW):
                 self.assertTrue(self.store.sync(4.5, self.sample, needs=self.needs))
                 self.assertTrue(entered.wait(2))
                 self.assertTrue(self.store.thread.is_alive())
                 self.assertEqual("loading", self.store.snapshot([], needs=self.needs)["state"])
                 self.assertFalse(self.store.sync(4.5, self.sample, force=True, needs=self.needs))
-            with patch("discovery_store.time.time", return_value=NOW + 61):
+            with patch("osu_coach.storage.discovery_store.time.time", return_value=NOW + 61):
                 self.assertFalse(self.store.sync(4.5, self.sample, force=True, needs=self.needs))
                 release.set()
                 self.store.thread.join(2)

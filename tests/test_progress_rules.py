@@ -2,7 +2,7 @@
 import copy
 import unittest
 
-from progress_rules import rank_evidence
+from osu_coach.core.progress_rules import rank_evidence
 
 
 def play(index, **changes):

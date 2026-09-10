@@ -8,7 +8,7 @@ import threading
 import unittest
 from unittest.mock import Mock, patch
 
-from tag_store import MAX_SETS_PER_SYNC, TTL_SECONDS, TagStore
+from osu_coach.storage.tag_store import MAX_SETS_PER_SYNC, TTL_SECONDS, TagStore
 
 
 NOW = 2_000_000_000
@@ -42,7 +42,7 @@ class TagStoreTests(unittest.TestCase):
         self.temp.cleanup()
 
     def sync(self, maps=None, plays=None, force=False):
-        with patch("tag_store.time.time", return_value=NOW), patch.object(self.store.stop, "wait", return_value=False):
+        with patch("osu_coach.storage.tag_store.time.time", return_value=NOW), patch.object(self.store.stop, "wait", return_value=False):
             started = self.store.sync(self.maps if maps is None else maps, plays or [], 4.5, force=force)
             if self.store.thread:
                 self.store.thread.join(2)
@@ -55,7 +55,7 @@ class TagStoreTests(unittest.TestCase):
         self.assertEqual([12, 20], [call.args[0] for call in self.fetch.call_args_list])
         restored = TagStore(self.temp.name, fetcher=self.fetch)
         self.assertEqual(restored.enrich([self.maps[0]])[0]["tags"][0]["name"], "skillset/jumps")
-        with patch("tag_store.time.time", return_value=NOW + 60):
+        with patch("osu_coach.storage.tag_store.time.time", return_value=NOW + 60):
             self.assertFalse(restored.sync(self.maps, [], 4.5))
         self.assertEqual(self.fetch.call_count, 2)
         content = json.loads(Path(self.temp.name, "community-tags.json").read_text(encoding="utf-8"))
@@ -108,20 +108,20 @@ class TagStoreTests(unittest.TestCase):
             {"id": "old-score", "beatmap_id": 2, "played_at": "2026-09-08T12:00:00Z"},
             {"id": "new-score", "beatmap_id": 3, "played_at": "2026-09-08T12:05:00Z"},
         ]
-        with patch("tag_store.time.time", return_value=NOW):
+        with patch("osu_coach.storage.tag_store.time.time", return_value=NOW):
             self.assertEqual(self.store.plan(maps, plays, 4.5), [3, 2, 1])
 
     def test_plan_resolves_checksum_and_deduplicates_sibling_difficulties(self):
         plays = [{"beatmap_key": "hash-101", "played_at": "2026-09-08T12:00:00Z"}]
-        with patch("tag_store.time.time", return_value=NOW):
+        with patch("osu_coach.storage.tag_store.time.time", return_value=NOW):
             self.assertEqual(self.store.plan(self.maps, plays, 4.5), [12, 20])
 
     def test_ttl_boundary_and_force_refresh(self):
         self.store.sets = {"12": record({100: []}), "20": record({200: []}, NOW - TTL_SECONDS)}
-        with patch("tag_store.time.time", return_value=NOW):
+        with patch("osu_coach.storage.tag_store.time.time", return_value=NOW):
             self.assertEqual(self.store.plan(self.maps, [], 4.5), [20])
             self.assertEqual(self.store.plan(self.maps, [], 4.5, force=True), [12, 20])
-        with patch("tag_store.time.time", return_value=NOW + TTL_SECONDS):
+        with patch("osu_coach.storage.tag_store.time.time", return_value=NOW + TTL_SECONDS):
             self.assertEqual(self.store.plan(self.maps, [], 4.5), [12, 20])
 
     def test_single_sync_caps_requests_at_forty_sets(self):
@@ -181,12 +181,12 @@ class TagStoreTests(unittest.TestCase):
         self.fetch.side_effect = RuntimeError("Network unavailable")
         self.assertTrue(self.sync(maps=self.maps[:1]))
         self.assertEqual(self.store.next_retry_at, NOW + 60)
-        with patch("tag_store.time.time", return_value=NOW + 59):
+        with patch("osu_coach.storage.tag_store.time.time", return_value=NOW + 59):
             self.assertFalse(self.store.sync(self.maps[:1], [], 4.5))
             self.assertFalse(self.store.sync(self.maps[:1], [], 4.5, force=True))
         self.assertEqual(self.fetch.call_count, 1)
         self.fetch.side_effect = lambda sid: {100: votes()}
-        with patch("tag_store.time.time", return_value=NOW + 60):
+        with patch("osu_coach.storage.tag_store.time.time", return_value=NOW + 60):
             self.assertTrue(self.store.sync(self.maps[:1], [], 4.5))
             self.store.thread.join(2)
         self.assertEqual(self.fetch.call_count, 2)

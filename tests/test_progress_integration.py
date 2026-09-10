@@ -10,9 +10,9 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import app
-import engine
-from progress_store import ProgressStore
+from osu_coach import app
+from osu_coach.core import engine
+from osu_coach.storage.progress_store import ProgressStore
 
 
 class ProgressIntegrationTests(unittest.TestCase):
@@ -383,7 +383,7 @@ class ProgressMethodMigrationTests(unittest.TestCase):
         store = ProgressStore(self.db)
         observed = self.play(5)
         accepted = self.old_plays + [observed]
-        with patch("progress_store.datetime", wraps=datetime) as clock:
+        with patch("osu_coach.storage.progress_store.datetime", wraps=datetime) as clock:
             clock.now.return_value = self.now
             store.sync(self.profile, self.since, accepted, observed_id=observed["id"])
         assessment = engine.assess(accepted, now=self.now, since=self.since)
@@ -407,7 +407,7 @@ class ProgressMethodMigrationTests(unittest.TestCase):
         store = ProgressStore(self.db)
         accepted = self.old_plays + [self.play(index, days=10, stars=5) for index in range(5, 8)]
         expired = self.play(8, days=31, stars=5)
-        with patch("progress_store.datetime", wraps=datetime) as clock:
+        with patch("osu_coach.storage.progress_store.datetime", wraps=datetime) as clock:
             clock.now.return_value = self.now
             store.sync(self.profile, self.since, accepted + [expired], observed_id=expired["id"])
         snapshot = store.snapshot(self.profile, self.since,
@@ -421,7 +421,7 @@ class ProgressMethodMigrationTests(unittest.TestCase):
         store = ProgressStore(self.db)
         known = self.old_plays + [self.play(index, days=10, stars=5) for index in (5, 6)]
         delayed = self.play(7, days=12, stars=5)
-        with patch("progress_store.datetime", wraps=datetime) as clock:
+        with patch("osu_coach.storage.progress_store.datetime", wraps=datetime) as clock:
             clock.now.return_value = self.now
             store.sync(self.profile, self.since, known + [delayed], observed_id=delayed["id"])
         snapshot = store.snapshot(self.profile, self.since,
@@ -435,7 +435,7 @@ class ProgressMethodMigrationTests(unittest.TestCase):
         store = ProgressStore(self.db)
         untracked = "another-untracked-profile"
         plays = [self.play(index, days=40 - index * 2) for index in range(5)]
-        with patch("progress_store.assess", wraps=engine.assess) as evaluate:
+        with patch("osu_coach.storage.progress_store.assess", wraps=engine.assess) as evaluate:
             store.sync(untracked, self.since, plays)
         self.assertEqual(5, evaluate.call_count)
         self.assertEqual([engine.timestamp(play["played_at"]) for play in plays],

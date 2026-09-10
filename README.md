@@ -1,0 +1,195 @@
+# osu! coach
+
+Entrenador local para **osu!standard**, pensado para retomar el juego y progresar desde tu rendimiento actual. Registra partidas nuevas con tosu, propone mapas con metas personales y conserva tus misiones y ascensos.
+
+El cálculo usa las partidas registradas por el entrenador. Tu ranking global, los PP y tus mejores puntuaciones históricas de osu! quedan fuera de la referencia de entrenamiento.
+
+**Proyecto comunitario independiente.** No está afiliado a osu!, ppy ni tosu.
+
+## Qué ofrece
+
+- Recomendaciones por etapas: entrar en ritmo, práctica principal y consolidación o desafío.
+- Metas por dificultad: grado mínimo, precisión, misses y combo cuando se puede verificar.
+- Perfil de fortalezas y prioridades, con evidencia por tipo de mapa y tags comunitarios.
+- Misiones que conservan sus objetivos mientras las intentás y se renuevan al completarlas.
+- Rango personal e historial de mejora separados de la referencia de rendimiento reciente.
+- Búsqueda automática de mapas por descargar cuando faltan opciones apropiadas.
+- Criterios ajustables desde **Configuración**, sin editar el código.
+
+## Requisitos
+
+Para jugar y registrar partidas, la configuración preparada es **Windows con Python 3.11 o posterior**, osu! stable o lazer y tosu ejecutándose localmente. Python de 64 bits es la opción habitual.
+
+La dependencia fijada es `rosu-pp-py==4.0.2`, cuyo [paquete oficial requiere Python >=3.11](https://pypi.org/project/rosu-pp-py/4.0.2/). Cuando hay una distribución compilada para tu sistema, su instalación con pip no necesita Rust; otras plataformas pueden requerir compilar la biblioteca.
+
+La demo y las pruebas pueden ejecutarse con Python sin tener osu! o tosu instalados. El lanzador `iniciar.cmd` es para Windows; en otros sistemas se usan los comandos de Python. La detección automática de carpetas está preparada para Windows.
+
+## Instalación
+
+1. Instalá [Python desde su sitio oficial](https://www.python.org/downloads/). En Windows, habilitá el acceso a Python desde la terminal o instalá su lanzador `py`.
+2. Descargá el código del repositorio con **Code → Download ZIP** y extraelo en una carpeta donde puedas guardar archivos. También podés usar Git:
+
+   ```powershell
+   git clone https://github.com/sbernal1995/osu-coach.git
+   cd osu-coach
+   ```
+
+3. En Windows, abrí `iniciar.cmd`. Crea un entorno `.venv`, instala las dependencias fijadas y abre el panel en [127.0.0.1:8765](http://127.0.0.1:8765/). La primera instalación de dependencias necesita Internet.
+
+Para preparar el entorno manualmente:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+En Linux o macOS, el equivalente es `python3 -m venv .venv` y `.venv/bin/python -m pip install -r requirements.txt`. La [documentación de Python explica los entornos virtuales](https://docs.python.org/3/library/venv.html).
+
+### Probar primero la demo
+
+```powershell
+.\iniciar.cmd --demo --port 8766
+```
+
+O, con el entorno ya instalado:
+
+```powershell
+.\.venv\Scripts\python.exe app.py --demo --port 8766
+```
+
+Abrí [127.0.0.1:8766](http://127.0.0.1:8766/). La demo crea mapas y partidas ficticios en `data/demo/`, separados de `data/live/`. No inicia tosu ni las consultas automáticas de mapas y tags. Las demostraciones no incluyen canciones, replays ni puntuaciones personales.
+
+## Conectar tus partidas
+
+1. Descargá tosu desde sus [releases oficiales](https://github.com/tosuapp/tosu/releases/latest), extraelo en su propia carpeta y ejecutá `tosu.exe`.
+2. Abrí [127.0.0.1:24050](http://127.0.0.1:24050/) para comprobar que aparece su panel. Su [guía oficial](https://github.com/tosuapp/tosu#installation-guide) admite stable y lazer.
+3. En la configuración de tosu, conservá el servidor local `127.0.0.1`, puerto `24050`, y el cálculo habilitado (`CALCULATE_PP=true`). El coach utiliza las estrellas calculadas; su progresión no usa PP. No necesita los overlays.
+4. Abrí osu! y ejecutá:
+
+   ```powershell
+   .\iniciar.cmd --no-tosu
+   ```
+
+5. Jugá una partida nueva y dejá aparecer la pantalla de resultados. El panel del coach mostrará el resultado y las misiones.
+
+El proyecto no distribuye tosu ni descarga sus binarios. Si preferís que el coach inicie una copia portátil, podés colocar por tu cuenta los archivos oficiales de tosu en `vendor/tosu/`, con `tosu.exe` dentro. Esa carpeta permanece excluida del repositorio. Al cerrar el coach se cierra únicamente la instancia de tosu que haya iniciado.
+
+### Elegir la carpeta de mapas
+
+La detección automática prueba estas ubicaciones:
+
+| Cliente | Carpeta habitual |
+| --- | --- |
+| osu! lazer | `%APPDATA%\osu\files` |
+| osu! stable | `%LOCALAPPDATA%\osu!\Songs` |
+
+Si ambas existen, se elige lazer. Si tu instalación está en otra carpeta o querés usar stable, indicá su ubicación:
+
+```powershell
+.\iniciar.cmd --no-tosu --maps "D:\Juegos\osu!\Songs"
+```
+
+Para lazer, elegí su carpeta `files`; para stable, `Songs`. El lector abre archivos de mapas y crea su propio índice. Después de importar mapas nuevos, pulsá **Volver a leer mapas**.
+
+### Opciones útiles
+
+```powershell
+# Otro puerto para el panel
+.\iniciar.cmd --port 8766
+
+# Guardar el entrenamiento en una carpeta propia
+.\iniciar.cmd --no-tosu --data-dir "D:\Entrenamiento-osu"
+
+# Otro puerto local de tosu
+.\iniciar.cmd --no-tosu --tosu-url "http://127.0.0.1:24051/json/v2"
+
+# Consultar todas las opciones
+.\iniciar.cmd --help
+```
+
+El servidor de tosu debe ser local. Las carpetas y la conexión se eligen mediante estas opciones de inicio.
+
+## Configurar el entrenamiento
+
+En el panel, abrí **Configuración**. Cada criterio muestra su explicación, valor actual y límites admitidos. Ajustá los valores y pulsá **Guardar ajustes**. **Restaurar valores iniciales** recupera la configuración de partida.
+
+Los controles permiten adaptar la memoria de resultados, la evidencia necesaria para el perfil y los tags, la progresión y los filtros de descubrimiento. Los valores vigentes que muestra el panel son la referencia; los ejemplos de esta guía describen la configuración inicial.
+
+Por ejemplo, inicialmente la referencia considera hasta **100 partidas en 30 días**, mientras que la sesión usa hasta **20 partidas en 7 días**. Los resultados recientes pesan más y la repetición de un mismo mapa tiene un peso limitado. La calibración inicial requiere **5 partidas en 3 dificultades distintas**.
+
+Las metas de las misiones que ya tenés asignadas permanecen fijas. Los criterios vigentes se aplican al preparar nuevas propuestas. Recalibrar establece un nuevo comienzo para estimar tu rendimiento; conserva las partidas guardadas y los rangos ganados.
+
+## Cómo usar las recomendaciones
+
+Podés empezar con un mapa de **Entrar en ritmo**, continuar con dos o tres de **Práctica principal** y cerrar con **Consolidar**. El desafío aparece cuando los resultados recientes cumplen las condiciones que indica el panel.
+
+Cada tarjeta explica la meta para ese mapa. Es un objetivo de entrenamiento, no una predicción del resultado. Para completar una misión, una misma partida nueva debe cumplir todos los requisitos y terminar el mapa. Si falta información, el coach deja esa comprobación pendiente.
+
+**Copiar búsqueda** copia el ID de la dificultad cuando está disponible; pegalo en la búsqueda del juego. osu! [admite buscar mapas por ID](https://osu.ppy.sh/wiki/en/Beatmap_search). Las alternativas por título o mapper pueden devolver varios resultados: elegí la dificultad de la tarjeta.
+
+Las nuevas misiones evitan dificultades exactas ya jugadas en ese perfil. Otras dificultades de la misma canción pueden seguir apareciendo. El perfil se separa por jugador, cliente y configuración de mods.
+
+Los tags describen tendencias observadas en mapas comparables. Una asociación con un tag no identifica por sí sola el patrón concreto donde fallaste. El panel muestra cuánta evidencia respalda cada conclusión.
+
+La referencia reciente puede subir o bajar. El rango personal ganado se conserva y exige demostrar resultados sólidos en varias dificultades distintas, según los criterios configurados.
+
+## Mapas por descargar
+
+Si faltan candidatos para una etapa, el coach recorre páginas públicas de osu! en lotes acotados. Aplica localmente tus límites de estrellas, AR, BPM y duración. La consulta continúa aunque un lote no aporte resultados.
+
+Con la configuración inicial, un conjunto descargable necesita cumplir **a la vez**:
+
+- Valoración de al menos **8/10**.
+- Al menos **10 votos** que respalden esa nota.
+- Al menos **10.000 partidas registradas en el conjunto**.
+
+Los favoritos se muestran como información adicional y no sustituyen esos requisitos. Los umbrales se pueden consultar y ajustar en **Configuración**. Los datos de valoración y reproducciones pertenecen al conjunto de dificultades; no prueban la calidad específica de cada dificultad.
+
+El botón **Ver / descargar** abre osu!. La descarga e importación se realizan desde el juego o el sitio oficial. La búsqueda online se pausa para perfiles con mods o velocidad alterada cuando no hay estrellas comparables.
+
+La fuente pública tiene cobertura limitada y puede cambiar de formato. El panel informa los errores y conserva los candidatos válidos guardados.
+
+## Datos y privacidad
+
+El coach guarda localmente la configuración, el catálogo, las partidas aceptadas, las misiones y el progreso. La carpeta habitual es `data/live/`; copiá esa carpeta para hacer una copia de seguridad con la aplicación cerrada.
+
+Las consultas públicas de mapas y tags envían identificadores públicos de conjuntos y parámetros de paginación. El rendimiento, el nombre del jugador, las listas de exclusión y los criterios de entrenamiento se procesan localmente. El coach no pide credenciales de osu! ni usa un servicio de análisis externo.
+
+`data/`, `.venv/`, `vendor/`, registros, capturas y replays están excluidos del repositorio. Si elegís una carpeta propia con `--data-dir`, mantenela fuera del código que compartís. Consultá [Privacidad y archivos locales](docs/PRIVACIDAD.md) antes de adjuntar archivos a un reporte.
+
+## Limitaciones
+
+- El entrenamiento está implementado para **osu!standard**.
+- tosu debe observar la partida y el resultado. Una pantalla histórica al iniciar no cuenta como una partida nueva.
+- Si falta una fecha verificable, el panel puede pedirte confirmar el intento. Las transiciones muy rápidas pueden perderse entre lecturas.
+- El grado de stable depende también de los juicios; la precisión por sí sola no permite prometer una S. Los datos ausentes permanecen pendientes.
+- Las estrellas de tosu y las calculadas para el catálogo pueden variar según sus versiones.
+- Los criterios son heurísticas de práctica; todavía no constituyen un método de entrenamiento validado.
+
+## Problemas frecuentes
+
+| Situación | Qué comprobar |
+| --- | --- |
+| Python no se encuentra o es demasiado antiguo | Instalá Python 3.11+ y abrí otra terminal. El lanzador prueba `py` y después `python`. |
+| Falla la instalación de rosu-pp-py | Revisá la versión y arquitectura de Python. Consultá la [instalación de la biblioteca](https://github.com/MaxOhn/rosu-pp-py#installing-rosu-pp-py). |
+| El panel espera a tosu | Abrí osu! y tosu; verificá su panel local y el puerto configurado. |
+| No hay mapas en la biblioteca | Elegí `files` o `Songs` con `--maps` y volvé a leer los mapas. |
+| Una dificultad importada sigue figurando como descargable | Pulsá **Volver a leer mapas** cuando termine la importación. |
+| El panel anterior sigue abierto | Cerrá el entrenador desde su panel antes de iniciar otra versión o usá otro puerto. |
+| No aparecen nuevos candidatos | Revisá los límites de la etapa y el estado de búsqueda; puede faltar una opción que cumpla todos los criterios. |
+
+## Desarrollo y pruebas
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+Las pruebas usan datos ficticios, carpetas temporales y respuestas públicas simuladas. Algunas pruebas de integración abren un servidor HTTP local temporal. No requieren osu!, tosu ni credenciales. El flujo de GitHub Actions instala las dependencias y ejecuta las pruebas en Windows y Linux con Python 3.11 y 3.12.
+
+Para contribuir, describí el comportamiento esperado y un caso reproducible con datos ficticios. Evitá adjuntar bases de datos, capturas con nombres personales o logs completos. La [guía de publicación](docs/PUBLICACION.md) detalla los archivos que forman parte del proyecto.
+
+## Licencia y fuentes
+
+El código del coach se distribuye bajo [licencia MIT](LICENSE). Las dependencias y los programas externos conservan sus propias licencias; los mapas, canciones y replays no forman parte de esta distribución.
+
+Fuentes principales: [tosu](https://github.com/tosuapp/tosu), [rosu-pp-py](https://github.com/MaxOhn/rosu-pp-py), [almacenamiento de lazer](https://github.com/ppy/osu/wiki/User-file-storage), [tags de mapas](https://osu.ppy.sh/wiki/en/Beatmap/Beatmap_tags) y [grados de osu!](https://osu.ppy.sh/wiki/en/Gameplay/Grade).

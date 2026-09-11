@@ -395,10 +395,20 @@ class Coach:
 
     def discover_periodically(self):
         while not self.stop.is_set():
+            # Each finished batch wakes the scheduler. Re-evaluate exact mission
+            # and reserve needs before fetching again, also with the panel closed.
+            self.discovery_store.changed.clear()
             state = self.state()
-            if not state["discovery"]["search_needs"]:
+            discovery = state["discovery"]
+            if not discovery["search_needs"]:
                 self.sync_discovery()
-            self.stop.wait(60)
+            delay = 60
+            if (discovery["search_needs"] and discovery["automatic"]
+                    and discovery["state"] not in {"loading", "paused"} and discovery.get("next_retry")):
+                retry = timestamp(discovery["next_retry"])
+                if retry is not None:
+                    delay = max(.25, min(60, retry.timestamp() - time.time()))
+            self.discovery_store.changed.wait(delay)
 
     def start_tosu(self):
         if self.args.demo or self.args.no_tosu:
@@ -594,11 +604,11 @@ class Coach:
                 excluded.update(int(number(q.get("map", {}).get("id"))) for q in completed_history)
                 self.discovery_store.sync(profile["baseline"], public_sample, needs=search_needs, envelope=envelope,
                                           exclude_ids=excluded - {0}, excluded_songs=banned)
-            discovery = self.discovery_store.snapshot(self.catalog, public_sample, needs=needs)
-            discovery.update(reserve=reserve, search_needs=search_needs, limits=envelope,
+            discovery = self.discovery_store.snapshot(self.catalog, public_sample, needs=search_needs)
+            discovery.update(needs=needs, reserve=reserve, search_needs=search_needs, limits=envelope,
                              scope="Catálogo público de osu!, sin límite de antigüedad.")
-            if search_needs and not needs:
-                discovery["next_retry"] = self.discovery_store.snapshot(self.catalog, public_sample, needs=search_needs)["next_retry"]
+            if not search_needs and discovery["state"] == "ready":
+                discovery["message"] = "Ya hay opciones para todas las misiones y la reserva. El coach vuelve a la frecuencia habitual de búsqueda."
             quest_availability = {}
             current_difficulties = {(m["key"], mod_policy.identity(m.get("play_conditions") or mod_policy.options(sample)[0])): m for m in maps
                                     if m.get("calculator") == CALCULATOR_ID and number(m.get("stars")) > 0}
@@ -673,6 +683,7 @@ class Coach:
 
     def close(self):
         self.stop.set()
+        self.discovery_store.changed.set()
         self.variants.close()
         if self.child and self.child.poll() is None:
             self.child.terminate()

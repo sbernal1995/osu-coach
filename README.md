@@ -162,7 +162,9 @@ El coach busca canciones **antiguas y recientes**: nuevas para tus recomendacion
 
 La pantalla mantiene hasta **9 misiones** y prepara una **reserva de 6 canciones online por etapa** fuera de las misiones actuales. La reserva evita que la búsqueda se detenga apenas se llena el tablero. Podés configurar su tamaño en **Ajustes → Mapas para descargar**, o ponerlo en 0 para buscar solo cuando falten misiones. Los filtros y los conteos de reserva aparecen en **Filtros y frecuencia de búsqueda**.
 
-Cada lote lee hasta tres páginas y verifica hasta ocho conjuntos. Los conjuntos que quedan pendientes se guardan para el siguiente lote. Las búsquedas automáticas, periódicas y manuales conservan el punto de continuación, incluso al cerrar el coach. Un lote vacío no termina el recorrido. Cambiar de perfil o ampliar sustancialmente los filtros puede reiniciarlo para revisar mapas antes descartados.
+Cuando faltan misiones o reserva, el coach recorre **hasta 10 lotes seguidos**, recalculando lo que falta después de cada lote. Se detiene antes si ya hay suficientes opciones. Si todavía faltan, espera **1 minuto** y continúa con otro grupo; cuando completa las opciones, vuelve a la revisión habitual de **24 horas**. La cantidad de lotes, la pausa entre grupos y la frecuencia habitual se configuran en **Ajustes → Mapas para descargar**. Funciona con el panel cerrado mientras el servicio del coach siga abierto.
+
+Cada lote lee hasta tres páginas y verifica hasta ocho conjuntos. Las consultas individuales mantienen una separación mínima de 1,1 segundos. Los conjuntos que quedan pendientes se guardan para el siguiente lote. El panel muestra el lote actual, la continuación y las pausas. Al llegar al final de la fuente consultada se espera una hora; ante un error de red, 15 minutos. Las búsquedas automáticas, periódicas y manuales conservan el punto de continuación, incluso al cerrar el coach. Un lote vacío no termina el recorrido. Cambiar de perfil o ampliar sustancialmente los filtros puede reiniciarlo para revisar mapas antes descartados.
 
 Con la configuración inicial, un conjunto descargable necesita cumplir **a la vez**:
 

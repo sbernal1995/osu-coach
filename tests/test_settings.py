@@ -21,7 +21,7 @@ from tests.test_discovery_store import beatmap
 
 class SettingsValidationTests(unittest.TestCase):
     def test_schema_defaults_are_complete_valid_and_isolated(self):
-        self.assertEqual(42, len(SCHEMA))
+        self.assertEqual(43, len(SCHEMA))
         self.assertEqual(DEFAULTS, validate_settings({}))
         self.assertEqual(len(SCHEMA), len({item['key'] for item in SCHEMA}))
         changed = validate_settings({'quality_min_votes': 30})
@@ -33,7 +33,7 @@ class SettingsValidationTests(unittest.TestCase):
                {'quality_min_rating': 11}, {'quality_min_votes': '20'}, {'quality_min_plays': 10**400}, {'discovery_enabled': 0},
                {'unknown': 1}, {'reference_plays': 10}, {'reference_days': 2},
                {'calibration_maps': 6}, {'profile_min_maps': 10},
-               {'discovery_retry_minutes': 0}, {'consolidate_increment': .8},
+               {'discovery_retry_minutes': 0}, {'discovery_batches_per_pass': 0}, {'discovery_batches_per_pass': 51}, {'consolidate_increment': .8},
                {'rank_required_maps': 30, 'reference_plays': 20}]
         for values in bad:
             with self.subTest(values=values), self.assertRaises(ValueError):
@@ -186,7 +186,7 @@ class SettingsDiscoveryTests(unittest.TestCase):
 
     def test_configured_daily_and_missing_map_intervals(self):
         now=2000000000
-        self.store.set_settings(validate_settings({'discovery_interval_hours':2,'discovery_retry_minutes':4}))
+        self.store.set_settings(validate_settings({'discovery_interval_hours':2,'discovery_retry_minutes':4,'discovery_batches_per_pass':1}))
         batch=Mock(return_value={'maps':[beatmap()], 'next_cursor':{'page':2}, 'exhausted':False})
         self.store.batch_fetcher=batch
         with patch('osu_coach.storage.discovery_store.time.time', return_value=now):

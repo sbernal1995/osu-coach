@@ -326,9 +326,11 @@ function renderSettingsHelp(state) {
   );
   const enabled = settingValue(state, "discovery_enabled", true);
   const introduction = enabled
-    ? "Cuando faltan dificultades adecuadas, el coach busca automáticamente y agrega nuevas misiones sin cambiar las que ya tenés. Revisa nuevos lotes cada " +
+    ? "Cuando faltan misiones o reserva, el coach recorre hasta " +
+      v("discovery_batches_per_pass", 10) +
+      " lotes seguidos y comprueba después de cada uno si ya hay suficientes opciones. Si todavía faltan mapas, hace una pausa de " +
       v("discovery_retry_minutes", 1) +
-      " minutos mientras falten opciones; el panel muestra la próxima búsqueda si necesita esperar. También revisa novedades cada " +
+      " minutos y continúa desde donde quedó. Al completar las opciones, revisa novedades cada " +
       v("discovery_interval_hours", 24) +
       " horas mientras está abierto y conserva los resultados para la próxima sesión. "
     : "La búsqueda automática está desactivada en Configuración. Podés activarla para que el coach busque opciones cuando falten dificultades adecuadas. ";
@@ -2238,7 +2240,10 @@ function automaticSearchNotice(state, stage = null, empty = false) {
   const discovery = state.discovery;
   if (!discovery) return null;
   const stageKey = (value) => (value === "consolidate" ? "challenge" : value);
-  const needs = (Array.isArray(discovery.needs) ? discovery.needs : []).filter(
+  const requested = stage
+    ? discovery.needs
+    : discovery.search_needs || discovery.needs;
+  const needs = (Array.isArray(requested) ? requested : []).filter(
     (need) => need && (!stage || stageKey(need.stage) === stageKey(stage)),
   );
   if (
@@ -2283,9 +2288,16 @@ function automaticSearchNotice(state, stage = null, empty = false) {
       state: "loading",
       title: stage
         ? "Buscando un mapa para esta etapa"
-        : "Buscando dificultades para tus misiones",
+        : "Buscando mapas para tus misiones y reserva",
       message:
-        "El coach está buscando automáticamente opciones sin jugar adecuadas para tu nivel. Las nuevas misiones aparecerán cuando encuentre un mapa que cumpla los filtros.",
+        (numeric(discovery.active_batch) && numeric(discovery.batch_limit)
+          ? "Lote " +
+            format(discovery.active_batch) +
+            " de hasta " +
+            format(discovery.batch_limit) +
+            ". "
+          : "") +
+        "Recorriendo el catálogo y verificando candidatos. Después de cada lote se comprueba lo que falta; las nuevas misiones aparecen cuando un mapa cumple tus filtros.",
     };
   if (discovery.state === "error")
     return {
@@ -2296,13 +2308,24 @@ function automaticSearchNotice(state, stage = null, empty = false) {
         retryText +
         " Las misiones que ya tenés se conservan.",
     };
+  if (discovery.continuing)
+    return {
+      state: "loading",
+      title: "Continuando la búsqueda",
+      message:
+        "Se revisaron " +
+        format(discovery.batches_completed, "0") +
+        " lotes de este grupo. Todavía faltan opciones; el coach seguirá con el próximo lote desde donde quedó.",
+    };
   return {
     state: "waiting",
-    title: "Esperando una dificultad adecuada",
+    title: discovery.exhausted
+      ? "Fin del recorrido disponible"
+      : "Pausa entre grupos de búsqueda",
     message:
       (discovery.exhausted
-        ? "Se revisaron las opciones disponibles. "
-        : "Todavía faltan mapas que cumplan los filtros de tu práctica. ") +
+        ? "Se llegó al final de la fuente consultada y todavía faltan opciones compatibles. "
+        : "Terminó el grupo de lotes y todavía faltan mapas compatibles con tus filtros. ") +
       retryText +
       " Las nuevas misiones aparecerán automáticamente.",
   };
@@ -2464,6 +2487,7 @@ function renderDiscovery(state) {
     );
   if (
     !needs.length &&
+    !reserve.some((item) => item.missing > 0) &&
     discovery.next_update &&
     discovery.state !== "paused" &&
     Number.isFinite(new Date(discovery.next_update).getTime())

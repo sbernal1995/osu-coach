@@ -9,7 +9,7 @@ from pathlib import Path
 import threading
 import time
 
-from osu_coach.integrations.discovery_source import candidate_quality_ok, MIN_RATING, MIN_RATING_VOTES, MIN_PLAY_COUNT
+from osu_coach.integrations.discovery_source import candidate_quality_ok, MIN_RATING, MIN_RATING_VOTES, MIN_PLAY_COUNT, MIN_REQUEST_INTERVAL
 from osu_coach.core.mod_policy import public_requirements
 from osu_coach.settings import DEFAULTS, coach_settings, settings_context, get_setting
 
@@ -56,6 +56,7 @@ class DiscoveryStore:
         self.path = Path(directory) / "discovery.json"
         self.stop = stop or threading.Event()
         self.lock = threading.RLock()
+        self.changed = threading.Event()
         self.fetcher = fetcher
         self.batch_fetcher = batch_fetcher
         self.search = {}
@@ -115,6 +116,7 @@ class DiscoveryStore:
                 self.next_retry_at = 0
             if self.status["state"] != "loading":
                 self.status.update(state="ready", message="Ajustes actualizados. La próxima búsqueda usará tus nuevos criterios.")
+            self.changed.set()
 
     def _save_retry(self, *, clear=False):
         try:
@@ -144,6 +146,9 @@ class DiscoveryStore:
                           next_update=stamp(self.fetched_epoch + get_setting("discovery_interval_hours") * 3600) if self.fetched_epoch else None,
                           interval_hours=get_setting("discovery_interval_hours"), automatic=get_setting("discovery_enabled"), manual_allowed=compatible(sample), needs=needs, quality_policy=self.quality_policy(),
                           exhausted=bool(self.search.get("exhausted")),
+                          batches_completed=self.search.get("pass_batches", 0),
+                          batch_limit=get_setting("discovery_batches_per_pass"),
+                          continuing=bool(needs and self.search.get("fast_continue") and self.status["state"] == "ready"),
                           next_retry=stamp(max(time.time(), self.next_retry_at, self.demand_retry_at)) if needs else None)
         result["candidate_count"] = len(self.candidates(local_maps, sample))
         if not get_setting("discovery_enabled"):
@@ -207,8 +212,14 @@ class DiscoveryStore:
             if old_min and (not new_min or min(new_min) < min(old_min)):
                 restart = True
             cursor = None if restart else search.get("cursor")
+            pass_limit = get_setting("discovery_batches_per_pass")
+            pass_batches = search.get("pass_batches", 0)
+            if (type(pass_batches) is not int or not 0 <= pass_batches < pass_limit
+                    or restart or not demand
+                    or now - self.fetched_epoch >= get_setting("discovery_retry_minutes") * 60):
+                pass_batches = 0
             excluded = tuple(set(exclude_ids) | {_identifier(m) for m in self.maps if candidate_quality_ok(m)} - {None})
-            self.status.update(state="loading", message=("Buscando automáticamente mapas adecuados para las misiones y su reserva…"
+            self.status.update(state="loading", active_batch=pass_batches + 1, message=("Buscando automáticamente mapas adecuados para las misiones y su reserva…"
                                                         if demand else "Explorando el catálogo de osu!, también canciones antiguas, con buena valoración y suficientes partidas…"))
             self.next_retry_at = now + get_setting("discovery_retry_minutes") * 60
             revision = self.revision
@@ -267,9 +278,14 @@ class DiscoveryStore:
                     merged.update({_identifier(m): m for m in maps if _identifier(m) is not None})
                     combined = list(merged.values())[-2000:]
                     if demand or self.batch_fetcher is not None or self.fetcher is None:
-                        retry = fetched + (EXHAUSTED_RETRY_DELAY if exhausted else get_setting("discovery_retry_minutes") * 60)
+                        completed = pass_batches + 1 if demand else 0
+                        fast_continue = bool(demand and get_setting("discovery_enabled") and not exhausted and completed < pass_limit)
+                        delay = (EXHAUSTED_RETRY_DELAY if exhausted else MIN_REQUEST_INTERVAL if fast_continue
+                                 else get_setting("discovery_retry_minutes") * 60)
+                        retry = fetched + delay
                         search = {"profile": identity, "baseline": baseline if restart else previous_base, "cursor": next_cursor,
-                                  "exhausted": exhausted, "requirements": requirements if restart else previous, "next_retry_at": retry}
+                                  "exhausted": exhausted, "requirements": requirements if restart else previous, "next_retry_at": retry,
+                                  "pass_batches": completed, "fast_continue": fast_continue}
                     else:
                         search = self.search
                     value = {"version": 1, "fetched_epoch": fetched, "baseline": baseline,
@@ -280,7 +296,7 @@ class DiscoveryStore:
                     temp.replace(self.path)
                     self.maps, self.fetched_epoch, self.baseline = combined, fetched, baseline
                     if demand or self.batch_fetcher is not None or self.fetcher is None:
-                        self.search, self.demand_retry_at = search, retry
+                        self.search, self.demand_retry_at, self.next_retry_at = search, retry, retry
                         found = "Se encontró 1 dificultad candidata." if len(maps) == 1 else f"Se encontraron {len(maps)} dificultades candidatas."
                         message = (found + " Las etapas se rellenan automáticamente si cumplen sus límites."
                                    if maps else "Este lote no aportó dificultades adecuadas. La búsqueda continuará automáticamente.")
@@ -307,6 +323,7 @@ class DiscoveryStore:
                 with self.lock:
                     if revision != self.revision:
                         self.status.update(state="ready", message="Ajustes actualizados. La próxima búsqueda usará tus nuevos criterios.")
+                self.changed.set()
 
         self.thread = threading.Thread(target=worker, daemon=True, name="map-discovery")
         self.thread.start()

@@ -68,7 +68,8 @@ SCHEMA = [
     field("discovery_reserve_per_stage", "Canciones online de reserva por etapa", 6, 0, 30, 1, "Mapas para descargar", "Candidatas para descargar adicionales por etapa, fuera de las misiones actuales. El coach sigue buscando hasta cubrir esta reserva; 0 busca solo si faltan misiones."),
     field("discovery_enabled", "Buscar mapas automáticamente", True, None, None, None, "Mapas para descargar", "Completa las misiones, prepara una reserva y sigue explorando mapas de cualquier antigüedad."),
     field("discovery_interval_hours", "Revisión habitual del catálogo (horas)", 24.0, 1.0, 168.0, 1, "Mapas para descargar", "Intervalo de búsqueda cuando las etapas y su reserva ya están cubiertas."),
-    field("discovery_retry_minutes", "Intervalo para completar mapas y reserva (minutos)", 1, 1, 60, 1, "Mapas para descargar", "Pausa mínima entre lotes de búsqueda para llenar los lugares disponibles."),
+    field("discovery_batches_per_pass", "Lotes seguidos para completar mapas y reserva", 10, 1, 50, 1, "Mapas para descargar", "Revisa hasta esta cantidad de lotes seguidos y comprueba lo que falta después de cada uno. Cada lote consulta hasta 3 páginas y verifica hasta 8 conjuntos; se detiene antes si ya hay suficientes opciones."),
+    field("discovery_retry_minutes", "Pausa entre grupos de lotes (minutos)", 1, 1, 60, 1, "Mapas para descargar", "Si al terminar el grupo todavía faltan misiones o reserva, espera este tiempo y continúa desde donde quedó. Las consultas individuales mantienen una separación breve."),
 ]
 DEFAULTS = {item["key"]: item["default"] for item in SCHEMA}
 _FIELDS = {item["key"]: item for item in SCHEMA}

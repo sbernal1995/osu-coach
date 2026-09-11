@@ -256,8 +256,8 @@ function renderSettingsHelp(state) {
   );
   help(
     "help-rank",
-    "Tu rango personal",
-    "El rango ganado registra lo que pudiste consolidar y se conserva al recalibrar o al bajar tu forma reciente. Avanza en pasos de " +
+    "Máximo rango demostrado",
+    "Registra los resultados sólidos que alcanzaste y se conserva al recalibrar o al bajar tu forma reciente. Avanza en pasos de " +
       v("rank_step", 0.25) +
       " ★ al reunir resultados sólidos en " +
       v("rank_required_maps", 3) +
@@ -1035,9 +1035,7 @@ function renderCoachProgress(state) {
     !numeric(next.stars) && numeric(rank.stars) && Number(rank.stars) >= 10.5;
   text(
     "coach-earned-rank",
-    numeric(rank.stars)
-      ? rank.label || stars(rank.stars)
-      : "Rango por consolidar",
+    numeric(rank.stars) ? stars(rank.stars) : "Rango por demostrar",
   );
   text(
     "coach-earned-date",

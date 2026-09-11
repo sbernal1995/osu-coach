@@ -718,9 +718,6 @@ main {
   font-size: 12px;
   fill: var(--text);
 }
-.training-sidebar .radar-guide {
-  display: none;
-}
 .training-sidebar .radar-grid {
   stroke: #65667a;
   stroke-width: 0.8;
@@ -730,8 +727,10 @@ main {
   stroke-width: 0.8;
 }
 .radar-reference {
-  fill: #55566e24;
-  stroke: none;
+  fill: #8e8fa718;
+  stroke: #a5a6bc;
+  stroke-width: 1.2;
+  stroke-dasharray: 4 3;
 }
 .training-sidebar .radar-fill {
   fill: #91eed829;
@@ -768,10 +767,12 @@ main {
   background: var(--green);
 }
 .legend-reference {
-  background: #55566e;
+  background: #8e8fa718;
+  border: 1px dashed #a5a6bc;
 }
 .training-sidebar .radar-caption {
-  font-size: 10px;
+  font-size: 11px;
+  line-height: 1.45;
   margin: 9px 0 0;
   color: #9192a8;
 }

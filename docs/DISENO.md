@@ -22,19 +22,21 @@ La información secundaria se agrupa siguiendo la [divulgación progresiva de Ni
 
 ## Telaraña del perfil
 
-**Control general** compara cada valor con una referencia, de 0 a 100:
+**Control general** muestra mediciones recientes en el rango comparable del jugador. Usa escalas lineales ampliadas para distinguir resultados cercanos al control perfecto. El radio se calcula como `100 × (valor − centro) / (borde − centro)`, limitado a 0–100:
 
-| Eje | Transformación visual |
-| --- | --- |
-| Precisión | Precisión observada / umbral configurado de precisión × 100. |
-| Control de misses | Umbral configurado de misses / porcentaje observado de misses × 100; sin misses, 100. Si el umbral es cero, cualquier miss queda por debajo del objetivo. |
-| Combo | Porcentaje observado del combo máximo / umbral configurado de combo × 100. |
-| Completar mapas | Porcentaje de mapas completados. |
-| Consistencia | 1 punto porcentual / dispersión observada × 100; dispersión cero, 100. La dispersión es la desviación estándar entre las precisiones medias de los mapas. |
+| Eje | Centro (radio 0) | Borde (radio 100) |
+| --- | --- | --- |
+| Precisión | ≤90 % | 100 % |
+| Control de misses | ≥2 % de misses | 0 % de misses |
+| Combo | ≤50 % del combo máximo | 100 % del combo máximo |
+| Completar mapas | 0 % de partidas completadas | 100 % |
+| Consistencia | ≥5 pp de dispersión | 0 pp de dispersión |
 
-El dibujo limita los valores al intervalo 0–100. Un resultado mejor que la referencia se mantiene en el borde, y su valor original se muestra en la lista. La forma permite localizar qué referencias de control faltan; las etiquetas de fortaleza o práctica conservan la evaluación del perfil. Por ejemplo, la consistencia también requiere precisión suficiente para clasificarse como fortaleza, aunque tenga poca dispersión.
+Estos límites son una elección de presentación del coach, no umbrales universales de habilidad. Son fijos: cambiar los objetivos de entrenamiento no altera la posición del jugador. La línea gris discontinua transforma las referencias configuradas con la misma escala (precisión, misses y combo; completar usa 100 % y consistencia, 1 pp). Se dibuja en ambas vistas y puede quedar dentro del perfil. Superar una referencia ya no lleva automáticamente al borde.
 
-**Por tipo de mapa** usa directamente la precisión media entre 0 y 100 % para los tags `skillset/jumps`, `skillset/streams`, `skillset/alt`, `skillset/tech`, `skillset/precision`, `skillset/reading` y `skillset/gimmick`. El orden es fijo. Los otros tags siguen en el análisis completo. Solo se dibujan observaciones del rango comparable; cada partida puede aportar a varios tags.
+Cada eje muestra su valor real incluso si queda recortado por el límite interior. La vista completa explica los extremos de cada escala. Por ejemplo, con 97,45 % de precisión, 0,26 % de misses, 92,14 % de combo, 100 % de partidas completadas y 3,43 pp de dispersión, los radios son 74,5 / 87 / 84,28 / 100 / 31,4. Alcanzar el borde describe esa medición en los mapas observados, no dominio global de osu!. La dificultad comparable aparece junto al gráfico. Las etiquetas de fortaleza conservan la evaluación del perfil; poca dispersión también requiere precisión suficiente para considerarse una fortaleza.
+
+**Por tipo de mapa** usa la misma escala ampliada de precisión (90–100 %) para los tags `skillset/jumps`, `skillset/streams`, `skillset/alt`, `skillset/tech`, `skillset/precision`, `skillset/reading` y `skillset/gimmick`. El orden es fijo. La referencia gris corresponde al umbral configurado de precisión. Los otros tags siguen en el análisis completo. Solo se dibujan observaciones del rango comparable; cada partida puede aportar a varios tags. Es precisión asociada a un tag, no una medición aislada de cada habilidad.
 
 Los datos ausentes no se convierten en ceros ni se conectan con una línea que invente valores. Los puntos huecos y las líneas discontinuas indican evidencia inicial. Las mediciones y los conteos aparecen también como texto, siguiendo las [pautas de W3C para gráficos complejos](https://www.w3.org/WAI/tutorials/images/complex/). El radar no modifica el cálculo de progresión.
 

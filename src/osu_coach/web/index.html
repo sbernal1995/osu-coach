@@ -411,13 +411,17 @@
                 </div>
                 <div id="quick-radar" class="radar-host"></div>
                 <div class="radar-legend">
-                  <span><i class="legend-player"></i>Tu perfil</span
+                  <span><i class="legend-player"></i>Tus resultados</span
                   ><span
                     ><i class="legend-reference"></i>Referencia de control</span
                   >
                 </div>
+                <p id="quick-radar-scope" class="radar-caption">
+                  Resultados recientes en mapas comparables.
+                </p>
                 <p class="radar-caption">
-                  Control respecto de tus referencias · 0–100
+                  Escalas ampliadas · El borde representa un resultado perfecto
+                  en esa medida y en estos mapas.
                 </p>
                 <div id="quick-strengths" class="quick-findings"></div>
                 <div class="quick-focus">
@@ -486,8 +490,8 @@
             <div class="profile-layout">
               <section class="radar-panel" aria-labelledby="radar-heading">
                 <div class="radar-head">
-                  <h3 id="radar-heading">Habilidades de tu perfil</h3>
-                  <span class="radar-scale">0–100</span>
+                  <h3 id="radar-heading">Resultados de tu perfil</h3>
+                  <span class="radar-scale">Escalas ampliadas</span>
                 </div>
                 <div
                   class="radar-modes"
@@ -509,31 +513,50 @@
                   </button>
                 </div>
                 <div id="profile-radar" class="radar-host"></div>
+                <div class="radar-legend">
+                  <span><i class="legend-player"></i>Tus resultados</span>
+                  <span
+                    ><i class="legend-reference"></i>Referencia de control</span
+                  >
+                </div>
                 <p id="radar-description" class="radar-description"></p>
                 <div id="radar-values" class="radar-values"></div>
                 <details class="radar-method">
                   <summary>Cómo leer la telaraña</summary>
                   <p>
-                    Control general muestra cuánto alcanzás de las referencias
-                    de control del coach. El borde (100) significa alcanzar la
-                    referencia; valores superiores se mantienen en el borde. Los
-                    valores reales aparecen debajo, incluso cuando superan la
-                    referencia.
+                    Cada eje muestra una medición de tus partidas recientes en
+                    mapas comparables. Las escalas amplían las diferencias cerca
+                    de un buen resultado. El borde representa 100 % de
+                    precisión, 0 misses, 100 % del combo, 100 % de partidas
+                    completadas o 0 pp de dispersión, según el eje.
                   </p>
                   <p>
-                    Precisión y combo se comparan con tus umbrales configurados.
-                    Completar mapas usa el 100 %. Control de misses compara el
-                    umbral configurado con tu proporción de misses; consistencia
-                    compara 1 punto porcentual con la dispersión entre mapas. En
-                    estas dos medidas, menos es mejor. Si el umbral de misses es
-                    cero, se alcanza únicamente sin misses.
+                    Del centro al borde: precisión de 90 a 100 %, misses de 2 a
+                    0 %, combo de 50 a 100 %, completar de 0 a 100 % y
+                    dispersión de 5 a 0 puntos porcentuales. Los resultados
+                    fuera de esos intervalos quedan en el centro; siempre se
+                    muestra el valor real. Estos límites son una elección visual
+                    del coach.
                   </p>
                   <p>
-                    Por tipo de mapa muestra la precisión media (0–100 %) en
-                    mapas comparables con siete tags de habilidades, siempre en
-                    el mismo orden. Los puntos huecos indican evidencia inicial.
-                    Los ejes sin datos quedan sin punto, y la línea se
-                    interrumpe: no representan un cero.
+                    La línea gris marca tus referencias configuradas de
+                    precisión, misses y combo; completar usa 100 % y
+                    consistencia, 1 pp. Cambiar un objetivo mueve esa referencia
+                    y conserva la escala de tus resultados. Así podés ver cuánto
+                    falta y cuánto la superás.
+                  </p>
+                  <p>
+                    Completar al 100 % significa que terminaste las partidas
+                    observadas en ese rango. Consistencia mide cuánto varía la
+                    precisión entre mapas: poca variación puede darse también
+                    con precisión baja. Interpretá los ejes junto con sus
+                    valores y la dificultad de los mapas.
+                  </p>
+                  <p>
+                    Por tipo de mapa muestra la precisión media con la misma
+                    escala ampliada de 90 a 100 %, para siete tags en orden
+                    fijo. Los puntos huecos indican evidencia inicial. Los ejes
+                    sin datos quedan sin punto y la línea se interrumpe.
                   </p>
                   <p>
                     Los tags pueden coexistir en un mismo mapa. Este gráfico

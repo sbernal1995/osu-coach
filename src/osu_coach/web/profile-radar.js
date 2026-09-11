@@ -18,6 +18,39 @@ const TAG_AXES = [
 const number = (value) =>
   typeof value === "number" && Number.isFinite(value) ? value : null;
 const clamp = (value) => Math.min(100, Math.max(0, value));
+// Fixed zoom ranges make differences visible near a controlled result. These
+// are display bounds, not universal skill benchmarks or configurable goals.
+const SCALES = {
+  accuracy: {
+    center: 90,
+    edge: 100,
+    text: "Escala ampliada: centro ≤90 % · borde 100 %",
+  },
+  misses: {
+    center: 2,
+    edge: 0,
+    text: "Escala ampliada: centro ≥2 % de misses · borde 0 %",
+  },
+  combo: {
+    center: 50,
+    edge: 100,
+    text: "Escala ampliada: centro ≤50 % del combo · borde 100 %",
+  },
+  completion: {
+    center: 0,
+    edge: 100,
+    text: "Escala: centro 0 % completado · borde 100 %",
+  },
+  consistency: {
+    center: 5,
+    edge: 0,
+    text: "Escala ampliada: centro ≥5 pp de dispersión · borde 0 pp",
+  },
+};
+const project = (key, value) => {
+  const { center, edge } = SCALES[key];
+  return clamp(((value - center) / (edge - center)) * 100);
+};
 const format = (value) =>
   new Intl.NumberFormat("es-AR", { maximumFractionDigits: 2 }).format(value);
 const setting = (state, key, fallback) =>
@@ -48,14 +81,23 @@ export function buildRadarModel(state, mode = "control") {
       return {
         key,
         label,
-        score: valid ? value : null,
+        score: valid ? project("accuracy", value) : null,
+        referenceScore: project(
+          "accuracy",
+          setting(state, "strong_accuracy", 97),
+        ),
+        scale: SCALES.accuracy.text,
+        reading: valid ? format(value) + " %" : "Sin datos",
         raw: valid ? format(value) + " %" : "Sin datos",
         status: valid ? item.status || "learning" : "explore",
         provisional: item.confidence !== "medium",
         samples: item.comparable_plays || 0,
         maps: item.comparable_maps || 0,
         sessions: item.comparable_sessions || 0,
-        target: "Precisión en mapas con este tag",
+        target:
+          "Referencia de precisión: ≥ " +
+          format(setting(state, "strong_accuracy", 97)) +
+          " %",
         evidence:
           item.message || "Todavía faltan partidas comparables con este tag.",
       };
@@ -81,17 +123,7 @@ export function buildRadarModel(state, mode = "control") {
       (key === "consistency" || value <= 100) &&
       (number(item.samples) ?? 0) > 0;
     const inverse = key === "misses" || key === "consistency";
-    let score = null;
-    if (valid)
-      score = clamp(
-        inverse
-          ? value === 0
-            ? 100
-            : (100 * target) / value
-          : target <= 0
-            ? 100
-            : (100 * value) / target,
-      );
+    const score = valid ? project(key, value) : null;
     const unit =
       key === "consistency"
         ? " pp de dispersión"
@@ -102,6 +134,11 @@ export function buildRadarModel(state, mode = "control") {
       key,
       label,
       score,
+      referenceScore: project(key, target),
+      scale: SCALES[key].text,
+      reading: valid
+        ? format(value) + (key === "consistency" ? " pp" : " %")
+        : "Sin datos",
       raw: valid ? format(value) + unit : "Sin datos",
       status: item.status || "learning",
       provisional: item.confidence !== "medium",
@@ -145,25 +182,26 @@ export function renderRadar(
       { id: id + "-title" },
       mode === "tags"
         ? "Rendimiento por tipo de mapa"
-        : "Habilidades: control respecto de tus referencias",
+        : "Resultados recientes en mapas comparables",
     ),
   );
   const description = axes
     .map(
       (axis) =>
-        `${axis.label}: ${axis.raw}; ${axis.score === null ? "sin punto" : statusText(axis.status)}.`,
+        `${axis.label}: ${axis.raw}; ${axis.scale}; ${axis.score === null ? "sin punto" : statusText(axis.status)}.`,
     )
     .join(" ");
   svg.append(
     svgElement(
       "desc",
       { id: id + "-description" },
-      description + " Puntos huecos: evidencia inicial. El borde es 100.",
+      description +
+        " Puntos huecos: evidencia inicial. Escalas ampliadas por eje. El borde representa un resultado perfecto en esa medida dentro de los mapas observados. La línea gris marca las referencias de control.",
     ),
   );
   const cx = 180,
     cy = 155,
-    radius = 100;
+    radius = 88;
   const xy = (index, scale = 1) => {
     const angle = -Math.PI / 2 + (index * 2 * Math.PI) / axes.length;
     return [
@@ -173,10 +211,6 @@ export function renderRadar(
   };
   const points = (scale) =>
     axes.map((axis, index) => xy(index, scale).join(",")).join(" ");
-  if (compact)
-    svg.append(
-      svgElement("polygon", { points: points(1), class: "radar-reference" }),
-    );
   for (const step of [25, 50, 75, 100])
     svg.append(
       svgElement("polygon", {
@@ -223,15 +257,23 @@ export function renderRadar(
         ),
       ),
     );
+    label.append(
+      svgElement(
+        "tspan",
+        { x: lx, dy: 14, class: "radar-reading" },
+        axis.reading,
+      ),
+    );
     svg.append(label);
   });
-  for (const step of [50, 100])
+  if (axes.every((axis) => number(axis.referenceScore) !== null))
     svg.append(
-      svgElement(
-        "text",
-        { x: cx + 5, y: cy - (radius * step) / 100 + 11, class: "radar-guide" },
-        String(step),
-      ),
+      svgElement("polygon", {
+        points: axes
+          .map((axis, index) => xy(index, axis.referenceScore / 100).join(","))
+          .join(" "),
+        class: "radar-reference",
+      }),
     );
   const plotted = axes.map((axis, index) =>
     axis.score === null ? null : xy(index, axis.score / 100),
@@ -274,7 +316,7 @@ export function renderRadar(
       svgElement(
         "title",
         {},
-        `${axis.label}: ${axis.raw}. ${axis.target}. ${statusText(axis.status)}. ${axis.samples} partidas, ${axis.maps} mapas, ${axis.sessions} sesiones.`,
+        `${axis.label}: ${axis.raw}. ${axis.scale}. ${axis.target}. ${statusText(axis.status)}. ${axis.samples} partidas, ${axis.maps} mapas, ${axis.sessions} sesiones.`,
       ),
     );
     svg.append(circle);
@@ -315,6 +357,7 @@ export function renderRadarValues(host, axes) {
         ),
       );
       row.append(htmlElement("p", "", axis.target));
+      row.append(htmlElement("p", "", axis.scale));
       return row;
     }),
   );

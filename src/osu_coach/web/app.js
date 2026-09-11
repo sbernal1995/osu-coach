@@ -4077,6 +4077,13 @@ function renderCompactProfile(state) {
   ]);
   if (signature !== radarSignature) {
     radarSignature = signature;
+    const band = state.player_profile?.evidence?.star_band;
+    text(
+      "quick-radar-scope",
+      numeric(band?.min) && numeric(band?.max)
+        ? `Resultados recientes en mapas de ${format(band.min)}–${format(band.max)} ★.`
+        : "Resultados recientes en mapas comparables.",
+    );
     const control = buildRadarModel(state, "control");
     const axes =
       radarMode === "control" ? control : buildRadarModel(state, "tags");
@@ -4086,8 +4093,8 @@ function renderCompactProfile(state) {
     text(
       "radar-description",
       radarMode === "control"
-        ? "El borde indica que alcanzás la referencia de control. Compará los valores reales y la evidencia de cada habilidad debajo."
-        : "Precisión en mapas con cada tag, de 0 a 100 %. Los siete ejes mantienen su lugar; los demás tipos y sus resultados están más abajo.",
+        ? "Resultados recientes con escalas ampliadas por eje. El borde representa un resultado perfecto en esa medida; la línea gris marca las referencias de control. Los valores reales y las escalas aparecen debajo."
+        : "Precisión en mapas con cada tag, ampliada de 90 a 100 %. Los valores inferiores se ubican en el centro y conservan su valor real. Cada partida puede aportar a varios tags; esto describe resultados en tu rango actual.",
     );
   }
   text(
@@ -4106,7 +4113,7 @@ function renderCompactProfile(state) {
     );
   else
     pills.append(element("p", "", "Reuniendo evidencia en distintos mapas."));
-  host.replaceChildren(element("h3", "", "Puntos fuertes"), pills);
+  host.replaceChildren(element("h3", "", "Puntos fuertes en tu rango"), pills);
   text(
     "quick-focus-label",
     state.player_profile?.priorities?.[0]?.label ||

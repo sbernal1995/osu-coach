@@ -11,6 +11,7 @@ import math
 from statistics import median
 
 from osu_coach.core.grades import target_grade
+from osu_coach.core.training import timing_comparable, skills_for
 from osu_coach.core.tag_analysis import skill_tags
 from osu_coach.core.evidence import setting_text
 from osu_coach.settings import get_setting
@@ -107,6 +108,14 @@ def expectation_for(beatmap, profile, stage, tag_analysis=None):
         stage = "practice"
     stars = _number(beatmap.get("stars"), _number(profile.get("baseline"), get_setting('initial_stars')))
     grouped = _comparable(window, stars)
+    # Enforced when actual map OD is known. Legacy records with no timing data
+    # remain usable as provisional estimates, but never prove comparability.
+    timing_known = _number(beatmap.get('od')) is not None
+    if timing_known:
+        keys = skills_for(beatmap)
+        grouped = {key: [p for p in rows if timing_comparable(beatmap, p)
+                        and (not keys or set(keys) & set(skills_for(p)))] for key, rows in grouped.items()}
+        grouped = {key: rows for key, rows in grouped.items() if rows}
     per_map, completed, failures = [], [], 0
     for attempts in grouped.values():
         passed = [p for p in attempts if p.get("passed") is True
@@ -196,6 +205,11 @@ def expectation_for(beatmap, profile, stage, tag_analysis=None):
                  f"(±{setting_text('comparable_star_band')} ★), con igual peso por mapa.")
     else:
         basis = f"Meta inicial: todavía faltan partidas completas en mapas de este rango (±{setting_text('comparable_star_band')} ★)."
+    if timing_known:
+        basis += " Mismos mods, OD cercano y patrones compatibles cuando hay etiquetas."
+    else:
+        confidence = "provisional"
+        basis += " Falta OD para verificar la comparación de precisión."
     if tag_reason:
         basis += " " + tag_reason
     note = "Objetivo orientativo de entrenamiento; se ajusta con tus próximas partidas."
@@ -212,6 +226,9 @@ def expectation_for(beatmap, profile, stage, tag_analysis=None):
         "grade_is_conditional": grade.get("grade_is_conditional", False),
         "evidence_star_band": {"min": round(max(.1, stars - get_setting('comparable_star_band')), 2), "max": round(stars + get_setting('comparable_star_band'), 2)},
         "failed_samples": failures,
+        "reference_metrics": {"accuracy": median(item['accuracy'] for item in per_map) if per_map else None,
+                              "miss_rate": median([item['miss_rate'] for item in per_map if item['miss_rate'] is not None]) if any(item['miss_rate'] is not None for item in per_map) else None,
+                              "combo": median([item['combo'] for item in per_map if item['combo'] is not None]) if any(item['combo'] is not None for item in per_map) else None},
         "method": (f"Últimos {get_setting('max_attempts_per_map')} intentos por mapa; precisión y misses de partidas completas. "
                    "Medianas con igual peso por mapa, ajuste gradual por dificultad y etapa. "
                    "Los tags con evidencia suficiente ajustan como máximo 0,5 puntos de precisión."),

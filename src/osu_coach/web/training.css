@@ -1249,3 +1249,13 @@ main {
   padding: 1px 5px;
   white-space: nowrap;
 }
+
+/* Focused practice and comparable progress, using the existing palette. */
+.training-role { color: var(--pink, #ff79ac); font-size: .72rem; margin: .3rem 0; }
+.practice-improvement { color: #8de7ce; font-size: .78rem; }
+.skill-evolution { margin: 1rem 0; padding: 1rem; border: 1px solid #353544; border-radius: 10px; }
+.skill-evolution > p, .skill-evolution details { color: #b9b6ca; font-size: .85rem; }
+.evolution-comparisons { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: .7rem; margin: .8rem 0; }
+.evolution-row { display: flex; flex-direction: column; gap: .35rem; border: 1px solid #353544; border-radius: 8px; padding: .8rem; }
+.evolution-row strong { overflow-wrap: anywhere; }
+.evolution-row small { color: #b9b6ca; }

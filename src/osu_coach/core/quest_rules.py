@@ -150,5 +150,9 @@ without an explicit completion fraction of at least 0.98.
         conditions = beatmap["play_conditions"]
         checks.insert(0, {"key": "mods", "label": "Mods y velocidad", "target": mod_label(conditions),
                           "actual": describe_play(play), "status": "met" if conditions_match(conditions, play) else "unmet"})
+    required = expectation.get('required_keys')
+    if isinstance(required, list):
+        for check in checks:
+            check['required'] = check['key'] in required or check['key'] in {'mods', 'complete'}
     return {"play_id": play["id"], "played_at": play["played_at"],
-            "completed": all(check["status"] == "met" for check in checks), "checks": checks}
+            "completed": all(check["status"] == "met" for check in checks if check.get("required", True)), "checks": checks}

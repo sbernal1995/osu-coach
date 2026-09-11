@@ -56,8 +56,9 @@ class RecommendationExpectationIntegrationTests(unittest.TestCase):
                 self.assertGreaterEqual(expected["misses_max"], 0)
                 self.assertLessEqual(expected["misses_max"], beatmap["object_count"])
                 self.assertLessEqual(expected["combo_min"], beatmap["max_combo"])
-                self.assertIn(expected["grade_label"], beatmap["goal"])
-                self.assertIn(f"{expected['accuracy_min']:g}".replace(".", ","), beatmap["goal"])
+                self.assertNotIn("grade", expected["required_keys"])
+                self.assertIn("Completar", beatmap["goal"])
+                self.assertIn(f"{expected['accuracy_min']:g}", beatmap["goal"])
                 self.assertNotIn("path", beatmap)
                 self.assertTrue(expected["basis"])
                 self.assertTrue(expected["note"])
@@ -83,8 +84,9 @@ class RecommendationExpectationIntegrationTests(unittest.TestCase):
         profile = engine.assess([play(i) for i in range(6)], now=NOW)
         self.assertTrue(profile["challenge_unlocked"])
         groups = engine.recommend(catalog(profile["baseline"]), profile)
-        self.assertEqual(groups[-1]["label"], "Pequeño desafío")
-        self.assertTrue(all(m["expectation"]["stage"] == "challenge" for m in groups[-1]["maps"]))
+        self.assertEqual(groups[-1]["label"], "Consolidar")
+        self.assertEqual(1, sum(m["expectation"]["stage"] == "challenge" for m in groups[1]["maps"]))
+        self.assertTrue(all(m["expectation"]["stage"] == "consolidate" for m in groups[-1]["maps"]))
 
     def test_old_scores_cannot_change_expectations_through_assess(self):
         recent = [play(i, accuracy=93) for i in range(6)]

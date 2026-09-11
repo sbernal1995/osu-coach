@@ -102,11 +102,11 @@ class ConfigurableCalculationTests(unittest.TestCase):
     def test_physical_limits_and_stage_targets_follow_configuration(self):
         profile = engine.assess([play(i) for i in range(5)], NOW)
         with settings_context({"warmup_offset": .7, "challenge_increment": .4,
-                               "bpm_margin": 30, "ar_margin": 1.2}):
+                               "bpm_margin": 30, "ar_margin": 1.2, "bpm_hard_limit": True}):
             self.assertEqual(engine.physical_limits(profile), {"bpm": 180, "ar": 9.2})
             groups = engine.recommend([], profile)
             self.assertAlmostEqual(groups[0]["target"], profile["baseline"]-.7)
-            self.assertAlmostEqual(groups[-1]["target"], profile["baseline"]+.4)
+            self.assertAlmostEqual(groups[-1]["target"], profile["baseline"])
 
     def test_star_tolerance_and_challenge_gate_are_configurable(self):
         rows = [play(i, accuracy=95, misses=4) for i in range(5)]

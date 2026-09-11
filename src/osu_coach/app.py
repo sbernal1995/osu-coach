@@ -18,8 +18,9 @@ from urllib.parse import urlsplit
 from urllib.request import urlopen
 import webbrowser
 
-from osu_coach.core.engine import assess, recommend, number, apply_player_profile, timestamp, physical_limits
+from osu_coach.core.engine import assess, recommend, number, apply_player_profile, timestamp, physical_limits, recent_window
 from osu_coach.core.player_profile import build_player_profile
+from osu_coach.core.training import benchmark_candidates, skill_references, evolution, MODEL_VERSION, timing_comparable
 from osu_coach.storage.quest_store import QuestStore, scope_key, map_tokens, is_remote
 from osu_coach.storage.progress_store import ProgressStore
 from osu_coach.storage.song_ban_store import SongBanStore
@@ -176,6 +177,12 @@ class Coach:
                 for field in ("title", "artist", "version"):
                     if not play.get(field):
                         play[field] = beatmap.get(field)
+            if beatmap and beatmap.get('note_density'):
+                try:
+                    rate = mod_policy.play_context(play)['rate']
+                    play['note_density'] = beatmap['note_density'] * rate / beatmap.get('clock_rate', 1)
+                except (ValueError, TypeError, KeyError):
+                    pass
             self.associate_mission(play)
             status = "pending" if play.get("needs_confirmation") else "accepted"
             with self.db:
@@ -280,13 +287,21 @@ class Coach:
     def quest_replacements(self, scope, board, maps, profile, analysis, player):
         visible = [quest["map"] for group in board["groups"] for quest in group["quests"]]
         occupied = PlayedHistory([], catalog=self.catalog + maps, completed=visible)
-        # maps has already been filtered against the complete played history.
+        # Keep one benchmark per board, including an in-progress reference.
+        has_benchmark = any(q['map'].get('benchmark') for g in board['groups'] for q in g['quests'] if q['status'] in {'pending', 'in_progress'})
+        if has_benchmark:
+            maps = [m for m in maps if not m.get('benchmark')]
         available = [beatmap for beatmap in maps if not occupied.contains(beatmap)]
         replacements = []
         for group in board["groups"]:
             if len(group["quests"]) >= 3 and not any(quest["status"] in {"completed", "skipped"} for quest in group["quests"]):
                 continue
-            candidates = recommend(available, profile, limit=12, tag_analysis=analysis, player_profile=player,
+            pool = available
+            if any(q['status'] in {'pending', 'in_progress'} and q['map'].get('training_role') == 'challenge' for q in group['quests']):
+                local_profile = {**profile, 'challenge_unlocked': False}
+            else:
+                local_profile = profile
+            candidates = recommend(pool, local_profile, limit=12, tag_analysis=analysis, player_profile=player,
                                    stages={group["stage"]}, fill_online=True)[0]
             local_count = sum(not is_remote(q["map"]) for q in group["quests"] if q["status"] in {"pending", "in_progress"})
             local_count += sum(not is_remote(m) for m in candidates["maps"])
@@ -519,7 +534,17 @@ class Coach:
             tagged_catalog = self.tag_store.enrich(maps)
             tagged_plays = self.tag_store.enrich(profile["window"])
             analysis = analyze_tags(tagged_plays, tagged_catalog, profile["baseline"], now=profile["evaluated_at"])
+            # Enrich descriptors only; never replace the stars/OD/mods actually
+            # observed in a play with a different catalog variant.
+            profile['window'] = tagged_plays
             player = build_player_profile(profile, analysis)
+            player['skill_levels'] = skill_references(tagged_plays, profile['baseline'], profile['evaluated_at'])
+            weak_skills = [row for row in player['skill_levels'] if row['status'] == 'practice']
+            player['training_skill'] = min(weak_skills, key=lambda row: row['reference'])['key'] if weak_skills else None
+            trend_window = recent_window(active, profile['evaluated_at'], self.config['since'],
+                                         limit=get_setting('trend_plays'), days=get_setting('trend_days'))
+            trend_window = self.tag_store.enrich(trend_window)
+            player['evolution'] = evolution(trend_window, profile['evaluated_at'])
             profile = apply_player_profile(profile, player)
             maps = self.tag_store.enrich(maps)
             for beatmap in maps:
@@ -532,7 +557,10 @@ class Coach:
             banned = self.song_bans.tokens(song_owner(self.active))
             unplayed = [beatmap for beatmap in maps if not history.contains(beatmap)
                         and not song_tokens(beatmap) & banned]
-            groups = recommend(unplayed, profile, tag_analysis=analysis, player_profile=player, fill_online=True)
+            benchmarks = benchmark_candidates([m for m in maps if history.contains(m) and not song_tokens(m) & banned],
+                                              trend_window, now=profile['evaluated_at'])
+            candidates = unplayed + benchmarks
+            groups = recommend(candidates, profile, tag_analysis=analysis, player_profile=player, fill_online=True)
             for group in groups:
                 if not group["maps"]:
                     group["empty_reason"] = "no_unplayed_maps_in_range"
@@ -558,14 +586,20 @@ class Coach:
                         return "song_banned"
                     if not mod_policy.preference_ok(quest["map"], sample) and not self.quest_is_protected(quest, pending):
                         return "preferences_changed"
-                    if self.can_skip_played_quest(quest, history, pending):
+                    if (quest['map'].get('expectation', {}).get('model_version') != MODEL_VERSION
+                            and not self.quest_is_protected(quest, pending)):
+                        return 'training_updated'
+                    if (quest['map'].get('benchmark') and not get_setting('benchmark_enabled')
+                            and not self.quest_is_protected(quest, pending)):
+                        return 'preferences_changed'
+                    if not quest['map'].get('benchmark') and self.can_skip_played_quest(quest, history, pending):
                         return "played_before_assignment"
                     if self.can_skip_download_quality(quest, pending, local_keys, local_ids, popularity):
                         return "download_quality"
                     return None
                 with self.db:
                     quest_board = (self.quest_store.ensure(scope, profile_label, groups,
-                        replacement_provider=lambda board: self.quest_replacements(scope, board, unplayed, profile, analysis, player),
+                        replacement_provider=lambda board: self.quest_replacements(scope, board, candidates, profile, analysis, player),
                         skip_predicate=skip_reason) if ensure_quests
                                    else self.quest_store.current(scope))
                 quest_history = self.quest_store.history(scope)
@@ -578,8 +612,8 @@ class Coach:
                 count = (sum(q["status"] in {"pending", "in_progress"} for q in assigned["quests"])
                          if assigned is not None else len(group["maps"]))
                 limits = {"stage": group["stage"], "label": group["label"], "target": group["target"],
-                          "min_stars": max(.1, group["target"] - get_setting("star_tolerance_below")),
-                          "max_stars": group["target"] + get_setting("star_tolerance_above"),
+                          "min_stars": group["min_stars"],
+                          "max_stars": group["max_stars"],
                           **{"max_" + field: limit for field, limit in ceilings.items()},
                           **({"min_length": get_setting("recommendation_min_seconds")} if get_setting("recommendation_min_seconds") else {}),
                           **({"max_length": get_setting("recommendation_max_seconds")} if get_setting("recommendation_max_seconds") else {})}
@@ -661,9 +695,11 @@ class Coach:
                     "song_bans": self.song_bans.snapshot(song_owner(self.active)),
                     "quest_availability": quest_availability,
                     "recommendation_policy": {"mode": "unplayed", "unit": "difficulty", "history_plays": len(active),
+                        "benchmark_enabled": get_setting('benchmark_enabled'), "benchmark_cooldown_days": get_setting('benchmark_cooldown_days'),
                         "message": "Las nuevas misiones evitan dificultades que ya jugaste. "
                                    "Pueden incluir otras dificultades de la misma canción, salvo que la hayas excluido. "
-                                   "Las misiones en práctica conservan sus metas."},
+                                   "Las misiones en práctica conservan sus metas. " +
+                                   (f"Se permite una referencia repetida tras {get_setting('benchmark_cooldown_days')} días para medir avance." if get_setting('benchmark_enabled') else "Las referencias repetidas están desactivadas.")},
                     "coach_progress": coach_progress,
                     "tag_analysis": analysis, "tag_sync": self.tag_store.snapshot(self.catalog),
                     "discovery": discovery,

@@ -6,6 +6,7 @@ import json
 from types import SimpleNamespace
 import tempfile
 import unittest
+from osu_coach.settings import settings_context
 
 from osu_coach import app
 from osu_coach.core import engine
@@ -96,7 +97,7 @@ class PlayerPolicyIntegrationTests(unittest.TestCase):
         groups = engine.recommend([], adjusted, player_profile=player)
         self.assertTrue(adjusted["challenge_unlocked"])
         self.assertEqual(groups[1]["target"], 3.9)
-        self.assertEqual(groups[2]["target"], 4.1)
+        self.assertEqual(groups[2]["target"], 4.0)
 
     def test_learning_consolidation_does_not_apply_an_unbacked_difficulty_adjustment(self):
         profile = progression_profile()
@@ -104,7 +105,7 @@ class PlayerPolicyIntegrationTests(unittest.TestCase):
         adjusted = engine.apply_player_profile(profile, player)
         groups = engine.recommend([], adjusted, player_profile=player)
         self.assertEqual(groups[1]["target"], 4)
-        self.assertEqual(groups[2]["target"], 4.15)
+        self.assertEqual(groups[2]["target"], 4.0)
 
     def test_other_modes_keep_existing_small_step(self):
         for mode in ("advance", "calibrate"):
@@ -113,7 +114,7 @@ class PlayerPolicyIntegrationTests(unittest.TestCase):
                 adjusted = engine.apply_player_profile(progression_profile(), player)
                 groups = engine.recommend([], adjusted, player_profile=player)
                 self.assertEqual(groups[1]["target"], 4)
-                self.assertEqual(groups[2]["target"], 4.15)
+                self.assertEqual(groups[2]["target"], 4.0)
 
     def test_player_profile_cannot_unlock_a_base_locked_challenge(self):
         for mode in ("advance", "consolidate", "recover"):
@@ -167,13 +168,16 @@ class PlayerPolicyIntegrationTests(unittest.TestCase):
             for item in group["maps"]:
                 count += 1
                 actual = item["expectation"]
-                expected = expectation_for(lookup[item["key"]], profile, group["stage"], analysis)
+                from osu_coach.core.training import training_goal
+                expected = expectation_for(lookup[item["key"]], profile, actual['stage'], analysis)
+                expected = training_goal(expected, lookup[item['key']], profile, actual['stage'], actual.get('focus'))
                 for key in ("accuracy_min", "misses_max", "combo_min", "grade_min"):
                     self.assertEqual(actual[key], expected[key])
                 grade = target_grade("lazer", actual["accuracy_min"], actual["misses_max"])
                 self.assertEqual(actual["grade_min"], grade["grade"])
         self.assertGreater(count, 0)
 
+    @settings_context({"bpm_hard_limit": True})
     def test_player_focus_cannot_bypass_physical_limits(self):
         analysis = tag_analysis()
         player = player_policy("consolidate", tag="skillset/streams")

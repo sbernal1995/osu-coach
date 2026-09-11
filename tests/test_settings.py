@@ -21,7 +21,7 @@ from tests.test_discovery_store import beatmap
 
 class SettingsValidationTests(unittest.TestCase):
     def test_schema_defaults_are_complete_valid_and_isolated(self):
-        self.assertEqual(43, len(SCHEMA))
+        self.assertEqual(52, len(SCHEMA))
         self.assertEqual(DEFAULTS, validate_settings({}))
         self.assertEqual(len(SCHEMA), len({item['key'] for item in SCHEMA}))
         changed = validate_settings({'quality_min_votes': 30})

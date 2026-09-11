@@ -301,7 +301,7 @@ function renderSettingsHelp(state) {
   help(
     "help-challenge",
     "Consolidar y probar un desafío",
-    "Consolidar propone otra dificultad cerca de tu referencia para repetir un resultado controlado. Una vez calibrado, el pequeño desafío se habilita cuando tus últimas " +
+    "Consolidar mantiene mapas controlables y variados. El desafío aparece marcado dentro de Práctica principal, con una meta concreta que admite misses. Una vez calibrado, se habilita cuando tus últimas " +
       v("challenge_maps", 3) +
       " partidas son en " +
       v("challenge_maps", 3) +
@@ -311,6 +311,7 @@ function renderSettingsHelp(state) {
       v("challenge_miss_percent", 2) +
       " % de misses, siempre que el perfil permita salir de recuperación. Probalo si la práctica principal salió cómoda. El tipo de mapa prioritario orienta la selección de práctica cuando hay evidencia suficiente.",
   );
+  $("help-challenge").append(document.createTextNode(" La misión exige completar y alcanzar la meta principal con el control indicado. El grado y el combo pueden ser orientativos. Las referencias repetidas esperan " + v("benchmark_cooldown_days", 7) + " días, con un máximo de una activa; se pueden desactivar en Ajustes. La evolución compara hasta " + v("trend_plays", 1000) + " partidas de " + v("trend_days", 90) + " días en condiciones equivalentes. El BPM no es un límite estricto salvo que lo actives."));
   help(
     "help-tags",
     "Tipos de mapa",
@@ -1265,8 +1266,46 @@ function profileValue(item) {
     ? format(item.value) + (unit ? "\u00a0" + unit : "")
     : "Sin datos suficientes";
 }
+function renderTrainingEvidence(state) {
+  const host = $("player-skill-levels");
+  if (host) {
+    host.replaceChildren();
+    (state.player_profile?.skill_levels || []).forEach(item => {
+      const card = element("article", "player-observation");
+      card.append(element("h4", "", item.label), element("div", "player-observation-value", numeric(item.reference) ? format(item.reference) + " ★" : "Por calibrar"));
+      card.append(element("p", "", format(item.samples) + " partidas · " + format(item.distinct_maps) + " mapas · " + format(item.sessions) + (item.sessions === 1 ? " sesión" : " sesiones")));
+      const status = element("span", "player-observation-status", {practice: "Trabajar a este nivel", strength: "Buen control a mayor dificultad", steady: "Cerca de tu referencia", learning: "Faltan partidas variadas"}[item.status]);
+      status.dataset.status = item.status;
+      card.append(status);
+      host.append(card);
+    });
+  }
+  const trend = state.player_profile?.evolution;
+  const root = $("evolution-comparisons");
+  if (!root || !trend) return;
+  root.replaceChildren();
+  text("evolution-summary", format(trend.improved_maps) + " dificultades con algún indicador mejorado de " + format(trend.compared_maps) + " comparadas. Memoria de evolución: hasta " + format(trend.window_plays) + " partidas / " + format(trend.window_days) + " días.");
+  text("evolution-method", trend.method + " La sesión, la referencia actual y la evolución usan ventanas independientes y configurables. Son criterios del coach, no umbrales universales de aprendizaje.");
+  if (!trend.comparisons?.length) root.append(element("p", "player-empty", "La primera comparación aparece al repetir una dificultad en otra sesión y con los mismos mods. Las misiones de referencia pueden hacerlo automáticamente cuando se cumple la espera configurada."));
+  (trend.comparisons || []).slice(0, 12).forEach(item => {
+    const row = element("article", "evolution-row");
+    row.append(element("strong", "", item.title + (item.version ? " [" + item.version + "]" : "")));
+    const mods = (item.mods?.mods || []).map(mod => mod.acronym).join(" + ") || "Sin mods";
+    row.append(element("small", "", coachDate(item.before_at) + " → " + coachDate(item.played_at) + " · " + mods + (item.mods?.rate !== 1 ? " · ×" + format(item.mods?.rate) : "")));
+    if (!item.completed) row.append(element("p", "", "Último intento incompleto. La precisión parcial no cuenta como mejora."));
+    (item.changes || []).forEach(change => {
+      const text = change.label + ": " + format(change.before) + " → " + format(change.after) + (change.key === "accuracy" ? " %" : change.key === "max_combo" ? "×" : "");
+      const metric = element("span", change.improved ? "practice-improvement" : "", (change.improved ? "✓ " : "") + text);
+      row.append(metric);
+    });
+    if (item.has_setback && item.improved) row.append(element("small", "", "Hubo mejoras y retrocesos: revisá cada indicador."));
+    root.append(row);
+  });
+}
+
 function renderPlayerProfile(state) {
   renderCoachProgress(state);
+  renderTrainingEvidence(state);
   const profile = state.player_profile || {};
   const evidence = profile.evidence || {};
   const ready = profile.status === "ready";
@@ -1738,6 +1777,9 @@ function questGoal(map, quest) {
       target: map.mods_label,
       status: "pending",
     });
+  const required = expected.required_keys;
+  const optional = Array.isArray(required) ? checks.filter(check => check.key !== "mods" && !required.includes(check.key)) : [];
+  if (Array.isArray(required)) checks = checks.filter(check => check.key === "mods" || required.includes(check.key));
   const list = element("ul", "quest-checks");
   const labels = {
     complete: "Completar el mapa",
@@ -1787,6 +1829,14 @@ function questGoal(map, quest) {
     list.append(item);
   });
   goal.append(list);
+  if (optional.length) {
+    const indicators = element("details", "goal-conditions");
+    indicators.append(element("summary", "", "Indicadores orientativos · no son requisitos"));
+    optional.forEach(check => indicators.append(element("p", "goal-grade-note", (check.label || check.key) + ": " + questCheckValue(check, check.target, true))));
+    goal.append(indicators);
+  }
+  const improvements = (attempt?.improvements || []).filter(item => item.improved);
+  if (improvements.length) goal.append(element("p", "practice-improvement", "Mejoraste respecto de la referencia: " + improvements.map(item => ({accuracy: "precisión", misses: "misses", combo: "combo"}[item.key]) + " " + format(item.before) + " → " + format(item.after)).join(" · ")));
   if (!map.expectation && map.goal)
     goal.append(element("p", "goal-grade-note", map.goal));
   if (expected.grade_note)
@@ -2700,7 +2750,8 @@ function renderQuestSkips(state) {
           ? ({
               song_banned: "Canción excluida por vos",
               download_quality: "Ya no cumple los filtros de descarga",
-              preferences_changed: "Cambiaste los filtros de duración o mods",
+              preferences_changed: "Cambiaste las preferencias de recomendaciones",
+              training_updated: "Nueva progresión del coach",
             }[quest.skipped_reason] || "Dificultad ya jugada") +
               " · " +
               coachDate(quest.skipped_at)
@@ -3888,7 +3939,12 @@ function compactMapCard(card, map, quest) {
     ? quest.last_attempt.checks
     : [];
   const targetList = element("span", "compact-goal-targets");
-  targets.forEach(({ key, label }, index) => {
+  let visibleTargets = targets;
+  if (Array.isArray(expected.required_keys)) {
+    visibleTargets = targets.filter(item => expected.required_keys.includes(item.key));
+    if (!visibleTargets.some(item => item.key === "complete")) visibleTargets.unshift({key: "complete", label: "Completar"});
+  }
+  visibleTargets.forEach(({ key, label }, index) => {
     if (index) targetList.append(document.createTextNode(" · "));
     const check = checks.find((item) => item?.key === key);
     const status = ["met", "unmet", "unknown"].includes(check?.status)
@@ -3935,6 +3991,10 @@ function compactMapCard(card, map, quest) {
       ),
     );
   }
+  const role = {benchmark: "Referencia · medí tu avance", challenge: "Desafío · ampliar tu control", practice: "Práctica específica", consolidate: "Consolidar", warmup: "Entrar en ritmo"}[map.training_role || expected.training_role];
+  if (role) card.append(element("p", "training-role", role));
+  const improved = (quest?.last_attempt?.improvements || []).filter(item => item.improved);
+  if (improved.length) card.append(element("p", "practice-improvement", "✓ Mejora registrada: " + improved.map(item => ({accuracy: "precisión", misses: "misses", combo: "combo"}[item.key])).join(" · ")));
   card.append(goal, actions, details);
 }
 

@@ -134,6 +134,10 @@ def _metadata(content: bytes) -> dict[str, Any]:
         first_start = min(first_start, start)
         final_end = max(final_end, end)
 
+    starts = sorted(_number(parts[2]) for parts in objects if not int(parts[3]) & 8)
+    densities = [bisect_right(starts, start + 1000) - i for i, start in enumerate(starts)]
+    densities.sort()
+    note_density = densities[min(len(densities) - 1, int(len(densities) * .9))] if densities else 0
     duration = max(0.0, (final_end - first_start) / 1000.0)
     if not math.isfinite(duration) or duration > 6 * 60 * 60:
         raise InvalidBeatmap("La duración del mapa es demasiado larga.")
@@ -149,7 +153,7 @@ def _metadata(content: bytes) -> dict[str, Any]:
         # Mapper metadata commonly describes the music. Keep it separate from
         # community skill tags, which are attached to an individual difficulty.
         "mapper_tags": list(dict.fromkeys(values.get("Tags", "").split()))[:256],
-        "length": duration,
+        "length": duration, "note_density": note_density,
     }
 
 
@@ -187,6 +191,7 @@ def _attributes(content: bytes, metadata: dict[str, Any], rosu: Any,
         "speed": float(difficulty["speed"]),
         "reading": float(difficulty["reading"]),
         "clock_rate": clock_rate,
+        "note_density": float(metadata.get("note_density", 0)) * clock_rate,
     }
     if any(isinstance(value, float) and not math.isfinite(value)
            for value in result.values()):

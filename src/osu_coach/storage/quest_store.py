@@ -107,15 +107,19 @@ class QuestStore:
         created_at = utcnow()
         frozen_groups = []
         seen = set()
+        benchmark_count = 0
         for group in groups:
             quests = []
             remote_count = 0
             for beatmap in group.get("maps", []):
                 identity = map_tokens(beatmap)
+                if beatmap.get('benchmark') and benchmark_count:
+                    continue
                 if (not identity or identity & seen or not isinstance(beatmap.get("expectation"), dict)
                         or (is_remote(beatmap) and remote_count >= self._online_limit(group))):
                     continue
                 seen.update(identity)
+                benchmark_count += int(bool(beatmap.get("benchmark")))
                 quests.append(self._new_quest(beatmap, group, created_at))
                 remote_count += int(is_remote(beatmap))
                 if len(quests) == 3:
@@ -154,7 +158,7 @@ class QuestStore:
                 if decision != "song_banned" and (quest["status"] != "pending" or quest.get("attempt_count", 0)
                                                   or quest.get("last_attempt") is not None):
                     continue
-                reason = decision if decision in {"download_quality", "song_banned", "preferences_changed"} else "played_before_assignment"
+                reason = decision if decision in {"download_quality", "song_banned", "preferences_changed", "training_updated"} else "played_before_assignment"
                 quest.update(status="skipped", skipped_reason=reason, skipped_at=utcnow())
                 saved = copy.deepcopy(quest)
                 saved.setdefault("stage_label", group.get("label"))
@@ -201,6 +205,7 @@ class QuestStore:
         visible = [quest["map"] for group in board["groups"] for quest in group["quests"]]
         occupied = set().union(*(map_tokens(beatmap) for beatmap in visible)) if visible else set()
         changed = False
+        benchmark_count = sum(bool(q['map'].get('benchmark')) for g in board['groups'] for q in g['quests'] if q['status'] in {'pending', 'in_progress'})
         created_at = utcnow()
         for group in board["groups"]:
             fresh = next((item for item in replacements if item["stage"] == group["stage"]), None)
@@ -215,6 +220,8 @@ class QuestStore:
                 eligible = [candidate for candidate in fresh.get("maps", [])
                             if isinstance(candidate.get("expectation"), dict) and map_tokens(candidate)
                             and not (map_tokens(candidate) & occupied)
+                            and not (candidate.get('benchmark') and benchmark_count)
+                            and not (candidate.get('training_role') == 'challenge' and any(q['map'].get('training_role') == 'challenge' for q in group['quests'] if q['status'] in {'pending', 'in_progress'}))
                             and (not is_remote(candidate) or remote_count < self._online_limit(fresh))]
                 # Keep the usual online option; stages with scarce local maps
                 # can explicitly permit more downloads through max_online.
@@ -223,11 +230,17 @@ class QuestStore:
                 if beatmap is None:
                     continue
                 replacement = self._new_quest(beatmap, fresh, created_at)
+                benchmark_count += int(bool(beatmap.get('benchmark')))
                 if quest is None:
                     group["quests"].append(replacement)
                 else:
                     replacement["replaces_quest_id"] = quest["id"]
                     group["quests"][index] = replacement
+                # Header follows new assignments; each existing mission keeps
+                # its own frozen map, role, stage target and requirements.
+                for field in ('label', 'description', 'target', 'min_stars', 'max_stars'):
+                    if field in fresh:
+                        group[field] = copy.deepcopy(fresh[field])
                 occupied.update(map_tokens(beatmap))
                 remote_count += int(is_remote(beatmap))
                 if quest is not None and quest["status"] == "completed":
@@ -278,6 +291,24 @@ class QuestStore:
                 attempt = evaluate_attempt(quest, play)
                 if attempt is None:
                     continue
+                if quest['map'].get('expectation', {}).get('model_version'):
+                    full = next((c.get('actual') is True for c in attempt['checks'] if c['key'] == 'complete'), False)
+                    reference = quest.get('practice_reference') or quest['map'].get('benchmark')
+                    if reference and full:
+                        improvements = []
+                        for key, field, sign in [('accuracy', 'accuracy', 1), ('misses', 'misses', -1), ('combo', 'max_combo', 1)]:
+                            actual = next((c.get('actual') for c in attempt['checks'] if c['key'] == key), None)
+                            before = reference.get(field)
+                            if isinstance(actual, (int, float)) and isinstance(before, (int, float)):
+                                delta = round(actual - before, 3)
+                                improvements.append({'key': key, 'before': before, 'after': actual, 'delta': delta, 'improved': delta * sign > .0001})
+                        attempt['improvements'] = improvements
+                        attempt['reference_play_id'] = reference.get('play_id')
+                    elif full and reference is None:
+                        quest['practice_reference'] = {'play_id': play['id'], 'played_at': play['played_at'],
+                                                       **{key: play.get(key) for key in ('accuracy', 'misses', 'max_combo')}}
+                        if play.get('accuracy_rounded'):
+                            quest['practice_reference']['accuracy'] = None
                 inserted = self.db.execute("INSERT OR IGNORE INTO quest_attempts VALUES (?, ?, ?, ?)",
                     (board["id"], quest["id"], play["id"], json.dumps(attempt, ensure_ascii=False))).rowcount
                 if not inserted:

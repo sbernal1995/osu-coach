@@ -9,6 +9,7 @@ from urllib.parse import urlencode
 
 from osu_coach.core.mod_policy import duration_ok, stamp as stamp_mods, play_context, context as mod_context
 from osu_coach.core.expectations import expectation_for
+from osu_coach.core.training import training_goal, skill_target, skills_for
 from osu_coach.settings import get_setting
 from osu_coach.beatmaps.map_search import search_details
 from osu_coach.core.evidence import (recency_weight, weighted_mean, trimmed_weighted_mean, play_time,
@@ -180,7 +181,7 @@ def select_candidates(candidates, limit, used_songs, *, fill_online=False):
             _, key, beatmap = row
             song = (str(beatmap.get("artist", "")).casefold(), str(beatmap.get("title", "")).casefold())
             set_id = beatmap.get("set_id")
-            if key in keys or song in songs or (set_id and set_id in sets):
+            if key in keys or song in songs or (set_id and set_id in sets) or (beatmap.get("benchmark") and any(row[2].get("benchmark") for row in chosen)):
                 continue
             chosen.append(row)
             keys.add(key)
@@ -268,8 +269,8 @@ def physical_limits(profile):
     anchors = physical_reference(profile)
     # Duration is not a proxy for skill difficulty and must not close the pool
     # around the short maps already recommended to the player.
-    return {field: anchors[field] + margin if anchors[field] else None
-            for field, margin in {"bpm": get_setting('bpm_margin'), "ar": get_setting('ar_margin')}.items()}
+    return {"bpm": anchors["bpm"] + get_setting('bpm_margin') if anchors["bpm"] and get_setting('bpm_hard_limit') else None,
+            "ar": anchors["ar"] + get_setting('ar_margin') if anchors["ar"] else None}
 
 
 def recommend(catalog, profile, limit=3, tag_analysis=None, player_profile=None, stages=None, *, fill_online=False):
@@ -287,13 +288,13 @@ def recommend(catalog, profile, limit=3, tag_analysis=None, player_profile=None,
         return anchors.get(field)
     recent_keys = [map_key(p) for p in window[-4:]]
     used, used_songs, groups = set(), set(), []
+    benchmark_used = False
     unlocked = profile["challenge_unlocked"]
+    consolidation_reason = "Repetí resultados sólidos en mapas distintos de una dificultad que ya podés controlar."
     if profile.get("phase") == "calibrating":
-        consolidation_reason = f"Completá {get_setting('calibration_plays')} partidas en al menos {get_setting('calibration_maps')} mapas distintos para terminar la calibración."
-    else:
-        consolidation_reason = f"Afianzá tu dificultad actual: las últimas {get_setting('challenge_maps')} partidas deben ser de mapas distintos, completadas con al menos {setting_text('challenge_accuracy')} % y hasta {setting_text('challenge_miss_percent')} % de misses para habilitar el desafío."
+        consolidation_reason = "Terminá la calibración jugando mapas cómodos y variados."
     if adjustments.get("mode") == "recover":
-        consolidation_reason = adjustments.get("reason") or "Priorizá completar mapas con control antes de probar otro desafío."
+        consolidation_reason = "Hoy priorizá recuperar el control; tu rango ganado se conserva."
     practice_description = "Dedicá la mayor parte de la sesión a las metas de estos mapas."
     if focus:
         practice_description = focus.get("action") or practice_description
@@ -302,27 +303,41 @@ def recommend(catalog, profile, limit=3, tag_analysis=None, player_profile=None,
         practice_description += f" Esta práctica baja {difference} ★ respecto de tu referencia para trabajar el foco actual."
     steps = [("warmup", "Entrar en ritmo", max(.5, base - get_setting('warmup_offset')), "Empezá con un mapa cómodo para recuperar el ritmo."),
              ("practice", "Práctica principal", practice_target, practice_description),
-             ("challenge", "Pequeño desafío" if unlocked else "Consolidar", base + challenge_increment if unlocked else (practice_target if adjustments.get("mode") == "recover" else base),
-              "Probá un mapa un poco más difícil si la práctica principal salió cómoda." if unlocked else consolidation_reason)]
+             ("challenge", "Consolidar", practice_target if adjustments.get("mode") == "recover" else base,
+              consolidation_reason)]
     for stage, label, target, goal in steps:
         if stages is not None and stage not in stages:
             continue
-        effective_stage = "consolidate" if stage == "challenge" and not unlocked else stage
-        candidates = []
+        effective_stage = "consolidate" if stage == "challenge" else stage
+        candidates, challenges = [], []
+        skill_margin = get_setting('comparable_star_band') if any(row.get('reference') is not None for row in (player_profile or {}).get('skill_levels', [])) else 0
+        range_lower = max(.1, target - skill_margin - get_setting('star_tolerance_below'))
+        range_upper = target + skill_margin + get_setting('star_tolerance_above') + (challenge_increment if stage == 'practice' and unlocked else 0)
         for m in catalog:
             key = str(m.get("key"))
             sr = number(m.get("stars"))
+            personal_target = skill_target(m, player_profile, target, base)
+            in_range = max(.1, personal_target - get_setting('star_tolerance_below')) - 1e-9 <= sr <= personal_target + get_setting('star_tolerance_above') + 1e-9
+            challenge_target = personal_target + challenge_increment
+            in_challenge = (stage == 'practice' and unlocked and not m.get('benchmark') and sr > personal_target + 1e-8
+                            and challenge_target - get_setting('star_tolerance_below') <= sr <= challenge_target + get_setting('star_tolerance_above'))
             song = (str(m.get("artist", "")).casefold(), str(m.get("title", "")).casefold())
             if (m.get("mode", 0) != 0 or not duration_ok(m) or key in used or song in used_songs or sr <= 0
-                    or not max(.1, target - get_setting('star_tolerance_below')) - 1e-9 <= sr <= target + get_setting('star_tolerance_above') + 1e-9):
+                    or (m.get('benchmark') and (stage == 'warmup' or benchmark_used))
+                    or not (in_range or in_challenge)):
                 continue
             # Keep simultaneous jumps in reading and speed bounded.
             if any(ceiling is not None and number(m.get(field)) > ceiling for field, ceiling in limits.items()):
                 continue
-            penalty = abs(sr - target) * 5 + (.5 if key in recent_keys else 0)
-            bpm = reference("bpm")
-            if bpm:
-                penalty += abs(number(m.get("bpm")) - bpm) / 150
+            penalty = abs(sr - personal_target) * 5 + (.5 if key in recent_keys else 0)
+            # Actual note density, when available, is a soft preference. BPM
+            # alone never substitutes for tapping demand.
+            densities = [number(p.get('note_density')) for p in window if number(p.get('note_density')) > 0]
+            if densities and number(m.get('note_density')) > 0:
+                penalty += min(.3, abs(number(m['note_density']) - mean(densities)) / 20)
+            preferred = (player_profile or {}).get('training_skill')
+            if stage == 'practice' and preferred and preferred in skills_for(m):
+                penalty -= .4
             # A bounded preference helps keep warmups brief without excluding
             # longer maps or influencing practice and consolidation difficulty.
             warmup_seconds = get_setting("warmup_preferred_seconds")
@@ -332,10 +347,26 @@ def recommend(catalog, profile, limit=3, tag_analysis=None, player_profile=None,
                 from osu_coach.core.tag_analysis import tag_priority
                 adjustment, _ = tag_priority(m, tag_analysis, effective_stage)
                 penalty += adjustment
-            candidates.append((penalty, key, m))
+            candidate = {**m, 'training_target': round(personal_target, 2)}
+            if in_range:
+                candidates.append((penalty - (.5 if m.get('benchmark') else 0), key, candidate))
+            if in_challenge:
+                challenges.append((penalty + (abs(sr - challenge_target) - abs(sr - personal_target)) * 5, key,
+                                   {**candidate, 'training_role': 'challenge', 'training_target': round(challenge_target, 2)}))
         maps = []
         chosen_sets = set()
-        for _, key, m in select_candidates(candidates, limit, used_songs, fill_online=fill_online):
+        chosen = select_candidates(candidates, limit, used_songs, fill_online=fill_online)
+        if challenges and limit:
+            # At most one controlled challenge in main practice; retain the
+            # third column for consolidation even when challenges are unlocked.
+            first = select_candidates(challenges, 1, used_songs, fill_online=True)
+            if first:
+                special_song = (str(first[0][2].get('artist', '')).casefold(), str(first[0][2].get('title', '')).casefold())
+                rest = [row for row in candidates if row[1] != first[0][1] and (not first[0][2].get('set_id') or row[2].get('set_id') != first[0][2].get('set_id'))]
+                chosen = select_candidates(rest, limit - 1, used_songs | {special_song}, fill_online=fill_online) + first
+        for _, key, m in chosen:
+            if m.get('benchmark') and benchmark_used:
+                continue
             set_id = m.get("set_id")
             song = (str(m.get("artist", "")).casefold(), str(m.get("title", "")).casefold())
             if (set_id and set_id in chosen_sets) or song in used_songs:
@@ -343,16 +374,18 @@ def recommend(catalog, profile, limit=3, tag_analysis=None, player_profile=None,
             if not m.get("play_conditions"):
                 m = stamp_mods(m, play_context(profile["window"][-1]) if profile.get("window") else mod_context())
             result = {k: v for k, v in m.items() if k not in {"path"}}
-            expected = expectation_for(m, profile, stage, tag_analysis)
+            role = m.get('training_role') or effective_stage
+            expected = expectation_for(m, profile, role, tag_analysis)
+            expected = training_goal(expected, m, profile, role, focus if stage == 'practice' else None)
             if focus and stage == "practice":
                 expected["focus"] = {key: focus[key] for key in ("key", "label", "action", "tag") if key in focus}
-            accuracy_goal = f"{expected['accuracy_min']:g}".replace(".", ",")
-            personal_goal = f"{expected['grade_label']}, al menos {accuracy_goal} % de precisión"
-            misses = expected["misses_max"]
-            if misses is not None:
-                personal_goal += (", 0 misses" if misses == 0 else f", como máximo {misses} " + ("miss" if misses == 1 else "misses"))
-            result.update(reason=f"{number(m['stars']):.2f} ★, cerca del objetivo de {target:.2f} ★.",
-                          expectation=expected, goal=personal_goal + ".", **search_details(m))
+            labels = {'accuracy': f"≥{expected['accuracy_min']:g} % de precisión",
+                      'misses': f"≤{expected['misses_max']} misses", 'combo': f"≥{expected['combo_min']}× combo"}
+            personal_goal = "Completar · " + " · ".join(labels[k] for k in expected['required_keys'] if k in labels)
+            result.update(reason=f"{number(m['stars']):.2f} ★, objetivo ajustado de {m['training_target']:.2f} ★ para este tipo de mapa.",
+                          expectation=expected, training_role=expected['training_role'], goal=personal_goal + ".", **search_details(m))
+            if m.get('benchmark'):
+                benchmark_used = True
             if tag_analysis:
                 from osu_coach.core.tag_analysis import tag_priority
                 _, tag_reason = tag_priority(m, tag_analysis, effective_stage)
@@ -367,8 +400,8 @@ def recommend(catalog, profile, limit=3, tag_analysis=None, player_profile=None,
                 chosen_sets.add(set_id)
             if len(maps) == limit:
                 break
-        query = f"stars>={max(.1, target-get_setting('star_tolerance_below')):.2f} stars<={target+get_setting('star_tolerance_above'):.2f}"
-        groups.append({"stage": stage, "label": label, "target": round(target, 2), "maps": maps,
+        query = f"stars>={range_lower:.2f} stars<={range_upper:.2f}"
+        groups.append({"stage": stage, "label": label, "target": round(target, 2), "min_stars": range_lower, "max_stars": range_upper, "maps": maps,
                        "max_online": max(1, 3 - sum(m.get("source") != "online" and m.get("local") is not False for m in maps)) if fill_online else 1,
                        "description": goal,
                        "search_url": "https://osu.ppy.sh/beatmapsets?" + urlencode({"m": 0, "q": query})})

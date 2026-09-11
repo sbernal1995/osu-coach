@@ -1,6 +1,7 @@
 """Independent long-term reference and short-term session regressions."""
 from datetime import timedelta
 import unittest
+from osu_coach.settings import settings_context
 
 from osu_coach.core import engine
 from osu_coach.core.evidence import recency_weight, session_ids, session_count, trimmed_weighted_mean
@@ -28,6 +29,7 @@ class MemoryWindowTests(unittest.TestCase):
         self.assertEqual(result['session']['attempts'], 1)
         self.assertEqual(result['session_window'], [scores[-1]])
 
+    @settings_context({"bpm_hard_limit": True})
     def test_old_fast_maps_cannot_loosen_the_current_sessions_tempo_limit(self):
         old = [play(i, bpm=240, played_at=(NOW-timedelta(days=10,minutes=i)).isoformat()) for i in range(50)]
         current = [self.recent(i+60, bpm=150) for i in range(20)]

@@ -7,6 +7,7 @@ from pathlib import Path
 import tempfile
 import threading
 import unittest
+from osu_coach.settings import settings_context
 from unittest.mock import Mock, patch
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -65,6 +66,7 @@ class DiscoveryRecommendationTests(unittest.TestCase):
         self.assertTrue(all(len(group["maps"]) == 3 for group in groups))
         self.assertTrue(all(m["source"] == "local" for m in flattened(groups)))
 
+    @settings_context({"bpm_hard_limit": True})
     def test_online_slot_never_bypasses_stars_bpm_or_ar_limits(self):
         local = [m for m in candidates() if m["source"] == "local"]
         invalid = [beatmap(900, online=True, stars=8), beatmap(901, online=True, bpm=185.01),

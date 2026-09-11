@@ -105,3 +105,7 @@ Para variantes online se descarga solo el archivo público `.osu`, con límite d
 Las misiones nuevas guardan `play_conditions` y `mods_label` junto con sus metas. La evaluación exige los mismos mods, sus ajustes y velocidad. Un intento nuevo de una misión activa, del mismo jugador, cliente y modo, puede guardar `coach_profile` para asociarse al entrenamiento que lo indicó. Ese campo no altera los mods de telemetría ni los resultados históricos. Las partidas manuales con otros mods siguen teniendo perfiles separados.
 
 El filtro de duración usa los segundos efectivos. El mínimo/máximo 0 deshabilita ese extremo. Una misión incompatible sin intentos se retira con `preferences_changed`; se conservan las misiones comenzadas, las que están en juego y las que esperan confirmación.
+
+### Práctica específica y evolución
+
+`core/training.py` concentra las referencias por habilidades, comparaciones de OD/mods, las repeticiones espaciadas y la separación entre objetivos obligatorios e indicadores. `expectations.py` conserva las estimaciones orientativas; `quest_rules.py` aplica `required_keys` cuando existe y mantiene la evaluación antigua para las misiones previas. `quest_store.py` guarda la referencia del primer intento completo y sus diferencias sin combinar intentos ni reescribir metas empezadas. La evolución se reconstruye del registro aceptado y filtrado por perfil/recalibración; no introduce otra fuente de puntuaciones.

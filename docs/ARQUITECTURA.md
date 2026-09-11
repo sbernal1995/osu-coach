@@ -109,3 +109,12 @@ El filtro de duración usa los segundos efectivos. El mínimo/máximo 0 deshabil
 ### Práctica específica y evolución
 
 `core/training.py` concentra las referencias por habilidades, comparaciones de OD/mods, las repeticiones espaciadas y la separación entre objetivos obligatorios e indicadores. `expectations.py` conserva las estimaciones orientativas; `quest_rules.py` aplica `required_keys` cuando existe y mantiene la evaluación antigua para las misiones previas. `quest_store.py` guarda la referencia del primer intento completo y sus diferencias sin combinar intentos ni reescribir metas empezadas. La evolución se reconstruye del registro aceptado y filtrado por perfil/recalibración; no introduce otra fuente de puntuaciones.
+
+
+## Nivel de práctica persistente
+
+`storage/training_store.py` guarda `training_levels`, separado del historial de referencia y los rangos personales. La clave incluye jugador, cliente, mods y época de recalibración. Inicializa desde la referencia calibrada; no reconstruye subidas con victorias anteriores. Cada paso congela cantidad de mapas, sesiones y aumento; los ajustes nuevos rigen desde el siguiente paso.
+
+Las misiones nuevas incluyen un identificador de paso. Solo cuentan dificultades distintas completadas y marcadas como elegibles de práctica, consolidación o desafío, como máximo 0,15 ★ por debajo del nivel. Las metas elegibles requieren también control mínimo de precisión y misses. Calentamientos, benchmarks, dificultades demasiado bajas y misiones de otro paso no suman. Las sesiones se calculan sobre el registro completo aceptado; las partidas intermedias evitan separar artificialmente una sesión. Un resultado nunca se reutiliza entre pasos. La subida necesita un nuevo cumplimiento y se pospone en recuperación.
+
+`engine.recommend` usa el nivel guardado como centro de entrenamiento, conserva los ajustes relativos por habilidad y permite una reducción temporal en recuperación. La referencia observada y sus puntos permanecen intactos. La consistencia baja por sí sola ya no reduce la práctica. Al completar un paso se renuevan las misiones pendientes sin intentos; las empezadas conservan objetivos y su identificador anterior. La interfaz indica si una misión antigua ya no suma al paso actual.

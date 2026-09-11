@@ -276,7 +276,7 @@ function renderSettingsHelp(state) {
       v("session_gap_minutes", 60) +
       " minutos o más separa sesiones. La evidencia usa hasta " +
       memory +
-      ", con más peso para las recientes. Al consolidar o recuperar control, el perfil puede reducir la exigencia de práctica; la recuperación pausa el desafío. Si la sesión pide una reducción mayor, se usa esa reducción. El desafío habilitado apunta a +" +
+      ", con más peso para las recientes. Al consolidar se mantiene la dificultad y se ajustan los objetivos. Una sesión difícil puede reducir temporalmente la práctica y pausar el desafío. Si la sesión pide una reducción mayor, se usa esa reducción. El desafío habilitado apunta a +" +
       v("consolidate_increment", 0.1) +
       " ★ al consolidar o +" +
       v("challenge_increment", 0.15) +
@@ -1002,7 +1002,23 @@ function renderCoachChart(progress) {
         : "Cada punto muestra una referencia calibrada al registrar un resultado."),
   );
 }
+function renderTrainingLevel(state) {
+  const level = state.profile?.training_level;
+  $("training-level-panel").hidden = !level;
+  if (!level) return;
+  text("training-level-value", format(level.stars) + " ★");
+  text("training-level-next", numeric(level.next_stars) ? "Próximo paso: " + format(level.next_stars) + " ★" : "Nivel máximo alcanzado");
+  text("training-level-counts", `${Math.min(level.completed_maps, level.required_maps)} de ${level.required_maps} dificultades · ${Math.min(level.completed_sessions, level.required_sessions)} de ${level.required_sessions} sesiones`);
+  text("training-level-explanation", `Cumplí los objetivos de las misiones marcadas «Cuenta para subir práctica» en dificultades distintas. Al reunir ambos requisitos, subís ${format(level.step)} ★. Los calentamientos y las repeticiones de referencia no suman. El nivel se conserva aunque baje tu rendimiento reciente; recalibrar inicia una nueva progresión. Los ajustes del paso iniciado se mantienen hasta completarlo.`);
+  const host = $("training-level-evidence");
+  host.replaceChildren();
+  for (const item of level.credits || []) host.append(element("p", "", `✓ ${item.title}${item.version ? " [" + item.version + "]" : ""} · ${format(item.stars)} ★ · ${coachDate(item.played_at)}`));
+  if (!level.credits?.length) host.append(element("p", "", "Este paso empieza con las nuevas misiones marcadas."));
+  for (const item of [...(level.history || [])].reverse()) host.append(element("p", "", `${format(item.from)} → ${format(item.to)} ★ · ${coachDate(item.completed_at)}`));
+}
+
 function renderCoachProgress(state) {
+  renderTrainingLevel(state);
   const progress = state.coach_progress;
   const valid = progress && typeof progress === "object";
   $("coach-progress-section").hidden = !valid;
@@ -3448,7 +3464,8 @@ function render(state) {
   const calibrated = p.phase === "training";
   $("demo-banner").hidden = !state.demo;
   text("mode-label", state.mode_label || "osu!standard");
-  text("baseline", format(p.baseline, "Por calibrar"));
+  text("baseline-label", p.training_level ? "Nivel de práctica" : "Referencia para entrenar");
+  text("baseline", format(p.training_level?.stars ?? p.baseline, "Por calibrar"));
   $("baseline").style.fontSize = numeric(p.baseline) ? "" : "26px";
   text("level-unit", numeric(p.baseline) ? "estrellas" : "");
   const baselineDescription = attempts
@@ -3985,6 +4002,7 @@ function compactMapCard(card, map, quest) {
   }
   const role = {benchmark: "Referencia · medí tu avance", challenge: "Desafío · ampliar tu control", practice: "Práctica específica", consolidate: "Consolidar", warmup: "Entrar en ritmo"}[map.training_role || expected.training_role];
   if (role) card.append(element("p", "training-role", role));
+  if (map.training_progress?.eligible) card.append(element("p", "training-credit", map.training_progress.cycle === currentState?.profile?.training_level?.cycle ? "Cuenta para subir práctica" : "Objetivos conservados · no suma al paso actual"));
   const improved = (quest?.last_attempt?.improvements || []).filter(item => item.improved);
   if (improved.length) card.append(element("p", "practice-improvement", "✓ Mejora registrada: " + improved.map(item => ({accuracy: "precisión", misses: "misses", combo: "combo"}[item.key])).join(" · ")));
   card.append(goal, actions, details);

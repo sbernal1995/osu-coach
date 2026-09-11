@@ -213,8 +213,11 @@ def apply_player_profile(profile, player):
     if mode == "recover":
         practice_offset = -min(get_setting('challenge_increment'), get_setting('recovery_drop'))
     elif mode == "consolidate" and player.get("status") == "ready":
-        practice_offset, challenge_increment = -get_setting('consolidate_increment'), get_setting('consolidate_increment')
+        practice_offset, challenge_increment = 0, get_setting('consolidate_increment')
     session_offset = max(-get_setting('recovery_drop'), min(0, number(profile.get("session", {}).get("adjustment"))))
+    level = profile.get('training_level')
+    if level and sum(struggling(p) and number(p.get('stars')) <= level['stars'] + .6 for p in profile.get('session_window', [])[-3:]) >= 2:
+        session_offset = -get_setting('recovery_drop')
     if session_offset < 0:
         mode, practice_offset = "recover", min(practice_offset, session_offset)
     base_unlocked = profile.get("base_challenge_unlocked", profile.get("challenge_unlocked", False))
@@ -274,7 +277,7 @@ def physical_limits(profile):
 
 
 def recommend(catalog, profile, limit=3, tag_analysis=None, player_profile=None, stages=None, *, fill_online=False):
-    base, window = profile["baseline"], profile.get("session_window", profile["window"])
+    base, window = (profile.get("training_level") or {}).get("stars", profile["baseline"]), profile.get("session_window", profile["window"])
     tag_analysis = profile_tag_analysis(tag_analysis, player_profile)
     adjustments = profile.get("training_adjustments", {})
     practice_target = max(.5, base + max(-get_setting('recovery_drop'), min(0, number(adjustments.get("practice_offset")))))
@@ -316,7 +319,7 @@ def recommend(catalog, profile, limit=3, tag_analysis=None, player_profile=None,
         for m in catalog:
             key = str(m.get("key"))
             sr = number(m.get("stars"))
-            personal_target = skill_target(m, player_profile, target, base)
+            personal_target = skill_target(m, player_profile, target, profile["baseline"])
             in_range = max(.1, personal_target - get_setting('star_tolerance_below')) - 1e-9 <= sr <= personal_target + get_setting('star_tolerance_above') + 1e-9
             challenge_target = personal_target + challenge_increment
             in_challenge = (stage == 'practice' and unlocked and not m.get('benchmark') and sr > personal_target + 1e-8
@@ -379,6 +382,19 @@ def recommend(catalog, profile, limit=3, tag_analysis=None, player_profile=None,
             expected = training_goal(expected, m, profile, role, focus if stage == 'practice' else None)
             if focus and stage == "practice":
                 expected["focus"] = {key: focus[key] for key in ("key", "label", "action", "tag") if key in focus}
+            ladder = profile.get('training_level')
+            if ladder:
+                eligible = (role in {'practice', 'consolidate', 'challenge'} and not m.get('benchmark')
+                            and adjustments.get('mode') != 'recover'
+                            and number(m.get('stars')) >= ladder['stars'] - .15 - 1e-8
+                            and number(m.get('object_count')) > 0 and ladder.get('next_stars') is not None)
+                result['training_progress'] = {'cycle': ladder['cycle'], 'eligible': eligible, 'stars': ladder['stars']}
+                if eligible:
+                    # Completion of an eligible mission must itself prove control;
+                    # an accuracy-only goal cannot award a step with uncontrolled misses.
+                    expected['accuracy_min'] = max(expected['accuracy_min'], get_setting('challenge_accuracy'))
+                    expected['misses_max'] = min(expected['misses_max'], math.floor(number(m['object_count']) * get_setting('challenge_miss_percent') / 100))
+                    expected['required_keys'] = list(dict.fromkeys(expected['required_keys'] + ['accuracy', 'misses']))
             labels = {'accuracy': f"≥{expected['accuracy_min']:g} % de precisión",
                       'misses': f"≤{expected['misses_max']} misses", 'combo': f"≥{expected['combo_min']}× combo"}
             personal_goal = "Completar · " + " · ".join(labels[k] for k in expected['required_keys'] if k in labels)

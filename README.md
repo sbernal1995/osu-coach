@@ -267,3 +267,12 @@ node --test tests/test_web_ui.mjs
 ```
 
 Node.js ejecuta tanto estas pruebas como el motor local de dificultad. Después de preparar el motor, el cálculo de estrellas funciona sin conexión.
+
+
+### Subir la dificultad entrenando
+
+El **nivel de práctica** empieza en tu referencia calibrada y aumenta, por defecto, **0,10 ★ por cada tres dificultades distintas completadas en al menos dos sesiones**. Buscá la etiqueta **Cuenta para subir práctica** y cumplí todos los objetivos de esa misión. No hace falta completar las nueve misiones del tablero juntas.
+
+El calentamiento y las repeticiones de referencia no suman subidas. El nivel ganado se conserva aunque juegues mapas fáciles; una sesión difícil puede bajar temporalmente las recomendaciones. La falta de consistencia por sí sola mantiene la dificultad y cambia el foco de práctica. En Progreso podés ver el paso actual, los resultados que cuentan y las subidas anteriores.
+
+En Ajustes → Progresión del entrenamiento podés activar la progresión y configurar el aumento, las dificultades y las sesiones necesarias. Cada paso conserva las reglas con las que empezó; los cambios se aplican al siguiente. Recalibrar inicia una nueva progresión de práctica y conserva los rangos personales ya ganados. Las misiones completadas antes de activar este sistema no otorgan subidas retroactivas.

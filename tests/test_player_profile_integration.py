@@ -96,7 +96,7 @@ class PlayerPolicyIntegrationTests(unittest.TestCase):
         adjusted = engine.apply_player_profile(profile, player)
         groups = engine.recommend([], adjusted, player_profile=player)
         self.assertTrue(adjusted["challenge_unlocked"])
-        self.assertEqual(groups[1]["target"], 3.9)
+        self.assertEqual(groups[1]["target"], 4.0)
         self.assertEqual(groups[2]["target"], 4.0)
 
     def test_learning_consolidation_does_not_apply_an_unbacked_difficulty_adjustment(self):

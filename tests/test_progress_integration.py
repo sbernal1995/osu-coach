@@ -207,7 +207,31 @@ class ProgressIntegrationTests(unittest.TestCase):
         self.reopen()
         self.assertEqual(reset, self.progress())
 
+    def test_completed_mission_advances_practice_and_recommendations_persistently(self):
+        self.coach.settings.update(training_required_maps=1, training_required_sessions=1)
+        self.seed()
+        before = self.coach.state()
+        level = before['profile']['training_level']
+        quest = next(q for g in before['quest_board']['groups'] for q in g['quests']
+                     if q['map'].get('training_progress', {}).get('eligible'))
+        m = quest['map']
+        self.coach.add_play(self.play(100, played_at=datetime.now(timezone.utc).isoformat(),
+                                     beatmap_key=m['key'], beatmap_id=m['id'], stars=m['stars'],
+                                     accuracy=100, misses=0, max_combo=500, grade='SS'))
+        after = self.coach.state()
+        earned = after['profile']['training_level']
+        self.assertAlmostEqual(level['stars'] + .1, earned['stars'])
+        self.assertEqual(1, len(earned['history']))
+        self.assertEqual(earned['stars'], after['recommendations'][1]['target'])
+        self.assertTrue(any(q['map'].get('training_progress', {}).get('cycle') == earned['cycle']
+                            for g in after['quest_board']['groups'] for q in g['quests']))
+        self.assertEqual(earned, self.coach.state()['profile']['training_level'])
+        self.reopen()
+        self.assertEqual(earned, self.coach.state()['profile']['training_level'])
+
     def test_rank_award_does_not_change_engine_policy_or_existing_missions(self):
+        # Isolate earned ranks from the separately configured practice ladder.
+        self.coach.settings['training_progress_enabled'] = False
         self.seed(count=1)
         board = self.coach.state()["quest_board"]
         self.seed(count=4, start=1)

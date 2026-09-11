@@ -283,7 +283,7 @@ def build_player_profile(profile, tag_analysis=None):
         reasons = ["La progresión conserva sus límites actuales mientras se reúnen datos comparables."]
     elif weaknesses:
         mode = "consolidate"
-        reasons = [f"La práctica principal baja hasta {setting_text('consolidate_increment', 2)} ★ para trabajar estas prioridades.",
+        reasons = ["La práctica conserva su dificultad y trabaja estas prioridades mediante los mapas y sus objetivos.",
                    f"Si el desafío ya está habilitado, el paso se limita a +{setting_text('consolidate_increment', 2)} ★."]
     elif (all(by_key[key]["status"] == "strength" for key in ("accuracy", "misses", "completion"))
           and by_key["combo"]["status"] in {"strength", "learning"}):
@@ -294,7 +294,7 @@ def build_player_profile(profile, tag_analysis=None):
                                "action": "Sostené tus buenos resultados al cambiar de canción, siguiendo la meta de cada mapa."})
     else:
         mode = "consolidate"
-        reasons = [f"La práctica principal baja hasta {setting_text('consolidate_increment', 2)} ★ para afianzar resultados intermedios.",
+        reasons = ["La práctica conserva su dificultad para afianzar resultados con objetivos específicos.",
                    f"Si el desafío ya está habilitado, el paso se limita a +{setting_text('consolidate_increment', 2)} ★."]
 
     status = "ready" if ready else "learning"

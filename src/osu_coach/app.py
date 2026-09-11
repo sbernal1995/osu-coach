@@ -23,6 +23,7 @@ from osu_coach.core.player_profile import build_player_profile
 from osu_coach.core.training import benchmark_candidates, skill_references, evolution, MODEL_VERSION, timing_comparable
 from osu_coach.storage.quest_store import QuestStore, scope_key, map_tokens, is_remote
 from osu_coach.storage.progress_store import ProgressStore
+from osu_coach.storage.training_store import TrainingStore
 from osu_coach.storage.song_ban_store import SongBanStore
 from osu_coach.core.song_identity import song_tokens, song_owner
 from osu_coach.storage.discovery_store import DiscoveryStore
@@ -103,6 +104,7 @@ class Coach:
         self.quest_store = QuestStore(self.db)
         self.song_bans = SongBanStore(self.db)
         self.progress_store = ProgressStore(self.db)
+        self.training_store = TrainingStore(self.db)
         self.db.commit()
         self.catalog = []
         self.variants = VariantStore(self.data, self.stop)
@@ -553,6 +555,10 @@ class Coach:
                                    if isinstance(tag, dict) and " ".join(str(tag.get("name", "")).casefold().split()) in names]
             scope = scope_key(self.active, self.config["since"]) if self.active else None
             completed_history = self.quest_store.completions(scope, limit=None)["items"] if scope else []
+            with self.db:
+                profile['training_level'] = self.training_store.sync(scope, profile, completed_history, active)
+            profile = apply_player_profile(profile, player)
+
             history = PlayedHistory(active, catalog=self.catalog + maps, completed=completed_history)
             banned = self.song_bans.tokens(song_owner(self.active))
             unplayed = [beatmap for beatmap in maps if not history.contains(beatmap)
@@ -586,6 +592,9 @@ class Coach:
                         return "song_banned"
                     if not mod_policy.preference_ok(quest["map"], sample) and not self.quest_is_protected(quest, pending):
                         return "preferences_changed"
+                    if (profile.get('training_level') and (quest['map'].get('training_progress') or {}).get('cycle') != profile['training_level']['cycle']
+                            and not self.quest_is_protected(quest, pending)):
+                        return 'training_updated'
                     if (quest['map'].get('expectation', {}).get('model_version') != MODEL_VERSION
                             and not self.quest_is_protected(quest, pending)):
                         return 'training_updated'
@@ -636,7 +645,7 @@ class Coach:
                 excluded = {int(number(m.get("id"))) for m in self.catalog}
                 excluded.update(int(number(p.get("beatmap_id"))) for p in active)
                 excluded.update(int(number(q.get("map", {}).get("id"))) for q in completed_history)
-                self.discovery_store.sync(profile["baseline"], public_sample, needs=search_needs, envelope=envelope,
+                self.discovery_store.sync((profile.get("training_level") or {}).get("stars", profile["baseline"]), public_sample, needs=search_needs, envelope=envelope,
                                           exclude_ids=excluded - {0}, excluded_songs=banned)
             discovery = self.discovery_store.snapshot(self.catalog, public_sample, needs=search_needs)
             discovery.update(needs=needs, reserve=reserve, search_needs=search_needs, limits=envelope,

@@ -112,7 +112,7 @@
             title="Ver detalles de tu sesión, perfil y calibración"
           >
             <span class="session-cell session-level"
-              ><span class="session-eyebrow">Referencia para entrenar</span
+              ><span id="baseline-label" class="session-eyebrow">Referencia para entrenar</span
               ><span class="session-level-line"
                 ><span data-icon="star" aria-hidden="true"></span
                 ><strong id="baseline">···</strong
@@ -667,6 +667,17 @@
             <div class="section-heading">
               <h2 id="coach-progress-heading">Tu progreso en el coach</h2>
             </div>
+            <section id="training-level-panel" class="coach-progress-box" hidden>
+              <div class="training-level-head">
+                <h3>Nivel de práctica <span id="training-level-value"></span></h3>
+                <strong id="training-level-next"></strong>
+              </div>
+              <p id="training-level-counts"></p>
+              <p id="training-level-explanation" class="coach-progress-method"></p>
+              <details><summary>Resultados de este paso y subidas anteriores</summary>
+                <div id="training-level-evidence"></div>
+              </details>
+            </section>
             <section class="skill-evolution" aria-labelledby="evolution-title">
               <h3 id="evolution-title">Mejoras en condiciones comparables</h3>
               <p id="evolution-summary"></p>
@@ -712,8 +723,8 @@
                   </div>
                 </div>
               </div>
-              <h3 class="coach-reference-heading">Cómo cambia tu referencia para entrenar</h3>
-              <p class="coach-progress-method">Esta referencia orienta las recomendaciones y puede subir o bajar según tus resultados y los mapas que jugás. Una bajada por sí sola no demuestra que hayas empeorado. El máximo rango demostrado se conserva.</p>
+              <h3 class="coach-reference-heading">Cómo cambia tu rendimiento reciente</h3>
+              <p class="coach-progress-method">Esta referencia resume tus resultados recientes. Puede variar al cambiar de mapas. El nivel de práctica ganado se conserva y guía las misiones; una sesión difícil puede suavizarlas temporalmente.</p>
               <div class="coach-reference-metrics">
                 <div>
                   <span id="coach-initial-label" class="coach-metric-label"
@@ -723,7 +734,7 @@
                   >
                 </div>
                 <div>
-                  <span class="coach-metric-label">Referencia para entrenar</span
+                  <span class="coach-metric-label">Rendimiento reciente</span
                   ><span id="coach-current-reference" class="coach-metric-value"
                     >Por calibrar</span
                   >
@@ -753,7 +764,7 @@
               <p id="coach-progress-method" class="coach-progress-method"></p>
               <details class="coach-rank-rules">
                 <summary>Qué comparan estos números y por qué hay tramos distintos</summary>
-                <p class="coach-progress-method">Inicio: primera referencia calibrada comparable. Actual: referencia para elegir mapas. Variación: actual menos inicio. Máxima: mayor referencia comparable. Se comparan puntos con el mismo cálculo y ajustes, desde la última recalibración.</p>
+                <p class="coach-progress-method">Inicio: primera referencia calibrada comparable. Actual: estimación de rendimiento reciente. Variación: actual menos inicio. Máxima: mayor referencia comparable. Se comparan puntos con el mismo cálculo y ajustes, desde la última recalibración.</p>
                 <p id="coach-method-note" class="coach-progress-method" hidden></p>
               </details>
               <div class="coach-progress-details">
@@ -823,8 +834,7 @@
               para mejorar necesita 8 mediciones válidas en al menos 5 mapas
               comparables y 2 sesiones. Una pausa de 60 minutos o más separa
               sesiones. La evidencia usa hasta 100 partidas en 30 días, con más
-              peso para las recientes. Al consolidar, el perfil puede proponer
-              práctica 0,10 ★ por debajo de la referencia; al recuperar control,
+              peso para las recientes. Al consolidar se mantienen la dificultad y los objetivos específicos. Al recuperar control,
               0,15 ★ por debajo y una pausa del desafío. Si la sesión pide una
               reducción mayor, se usa esa reducción. El desafío habilitado
               apunta a +0,10 ★ al consolidar o +0,15 ★ al avanzar.

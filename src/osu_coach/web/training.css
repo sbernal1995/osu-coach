@@ -1270,3 +1270,11 @@ main {
 #coach-rank-goal h3 { font-size: 14px; margin: 14px 0 8px; }
 #coach-rank-goal li { margin: 8px 0; line-height: 1.5; }
 .coach-next-title { flex-wrap: wrap; gap: 8px 14px; }
+
+#training-level-panel { margin-bottom: 16px; }
+.training-level-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.training-level-head h3 { margin: 0; font-size: 16px; }
+#training-level-value, .training-credit { color: var(--green); }
+.training-credit { font-size: 11px; margin: 4px 0; }
+#training-level-counts { margin: 10px 0; }
+#training-level-evidence p { margin: 8px 0; font-size: 12px; }

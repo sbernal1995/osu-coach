@@ -194,4 +194,4 @@ class ProgressStore:
                            "aunque salgan de la ventana reciente. Los puntos nuevos se registran al aceptar "
                            "el resultado; los reconstruidos usan la fecha de la partida. "
                            "Las comparaciones de mejora solo usan puntos del mismo método y ajustes. "
-                           "Las recomendaciones siguen tu rendimiento actual.")}
+                           "Las recomendaciones usan el nivel de práctica cuando está activado y se ajustan al rendimiento reciente.")}

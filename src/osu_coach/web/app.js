@@ -265,7 +265,7 @@ function renderSettingsHelp(state) {
       memory +
       ": mapas completados con " +
       strong +
-      ". La próxima práctica sigue tu referencia actual. Cambiar los ajustes conserva tus rangos; los próximos ascensos se evalúan al aceptar partidas nuevas. El gráfico conserva la etapa desde la última calibración y separa los cambios de cálculo o de ajustes.",
+      ". La práctica usa el nivel ganado cuando la progresión está activa; en caso contrario, usa la referencia reciente. Cambiar los ajustes conserva tus rangos; los próximos ascensos se evalúan al aceptar partidas nuevas. El gráfico conserva la etapa desde la última calibración y separa los cambios de cálculo o de ajustes.",
   );
   help(
     "help-profile",
@@ -1095,7 +1095,7 @@ function renderCoachProgress(state) {
   text(
     "coach-next-message",
     maximumRank
-      ? "Alcanzaste el rango más alto del coach. Seguí practicando con tu referencia actual."
+      ? "Alcanzaste el rango más alto del coach. Seguí practicando con tu nivel de práctica y los ajustes de la sesión."
       : next.calibrated ? missingMessage : "Primero completá la calibración. Después podrás sumar mapas para este logro.",
   );
   const missLimit = Number(settingValue(state, "strong_miss_percent", 0.5));
@@ -1163,7 +1163,7 @@ function renderCoachProgress(state) {
   text(
     "coach-history-method",
     (progress.method ||
-      "El rango se gana con resultados sólidos en mapas distintos. Las recomendaciones siguen tu rendimiento actual.") +
+      "El rango se gana con resultados sólidos en mapas distintos. Las recomendaciones usan el nivel de práctica cuando está activado y se ajustan al rendimiento reciente.") +
       " Los puntos nuevos se guardan al aceptar el resultado; los reconstruidos usan la fecha de la partida.",
   );
   const history = Array.isArray(progress.history)

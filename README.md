@@ -131,7 +131,7 @@ Las metas de las misiones que ya tenés asignadas permanecen fijas. Los criterio
 
 En **Ajustes → Recomendaciones: duración y mods** podés configurar:
 
-- **Duración mínima y máxima**, en segundos. 0 deja ese extremo sin límite. Por ejemplo, 90 y 240 admiten mapas entre 1:30 y 4:00. La duración es el tiempo jugable y refleja la velocidad del mod: DT ×1,5 acorta un mapa de 3 minutos a 2 minutos; HT ×0,75 lo lleva a 4 minutos.
+- **Duración mínima y máxima**, en formato **mm:ss**. `00:00` deja ese extremo sin límite. Por ejemplo, `01:30` y `04:00` admiten mapas entre un minuto y medio y cuatro minutos. La duración es el tiempo jugable y refleja la velocidad del mod: DT ×1,5 acorta un mapa de 3 minutos a 2 minutos; HT ×0,75 lo lleva a 4 minutos.
 - **Mantener los mods del perfil**, el comportamiento inicial.
 - **Libre**, para comparar Sin mods, HD, HR, DT, HT, HD+HR, HD+DT y HD+HT.
 - **Forzar una combinación**, para que las nuevas misiones usen exclusivamente esa opción. DT y HT usan su velocidad estándar.
@@ -158,7 +158,7 @@ La referencia reciente puede subir o bajar. El rango personal ganado se conserva
 
 ## Mapas por descargar
 
-El coach busca canciones **antiguas y recientes**: nuevas para tus recomendaciones no significa recién publicadas. La [búsqueda pública de osu! sin iniciar sesión](https://github.com/ppy/osu-web/blob/master/app/Libraries/Search/BeatmapsetSearchRequestParams.php) ordena por fecha de clasificación y limita los filtros disponibles. Por eso el coach recorre páginas hacia mapas más antiguos y aplica localmente tus límites de estrellas, AR y BPM, junto con tus exclusiones. La duración solo excluye mapas si configurás un mínimo o un máximo; no modifica tu dificultad de referencia. En «Entrar en ritmo» se da una preferencia suave a los mapas de hasta 150 segundos, configurable en Ajustes (0 la desactiva); todas las etapas respetan los límites de duración que elijas. Los antiguos ajustes de factor y margen de duración se retiran automáticamente al actualizar, conservando las demás preferencias.
+El coach busca canciones **antiguas y recientes**: nuevas para tus recomendaciones no significa recién publicadas. La [búsqueda pública de osu! sin iniciar sesión](https://github.com/ppy/osu-web/blob/master/app/Libraries/Search/BeatmapsetSearchRequestParams.php) ordena por fecha de clasificación y limita los filtros disponibles. Por eso el coach recorre páginas hacia mapas más antiguos y aplica localmente tus límites de estrellas, AR y BPM, junto con tus exclusiones. La duración solo excluye mapas si configurás un mínimo o un máximo; no modifica tu dificultad de referencia. En «Entrar en ritmo» se da una preferencia suave a los mapas de hasta 02:30, configurable en Ajustes (00:00 la desactiva); todas las etapas respetan los límites de duración que elijas. Los antiguos ajustes de factor y margen de duración se retiran automáticamente al actualizar, conservando las demás preferencias.
 
 La pantalla mantiene hasta **9 misiones** y prepara una **reserva de 6 canciones online por etapa** fuera de las misiones actuales. La reserva evita que la búsqueda se detenga apenas se llena el tablero. Podés configurar su tamaño en **Ajustes → Mapas para descargar**, o ponerlo en 0 para buscar solo cuando falten misiones. Los filtros y los conteos de reserva aparecen en **Filtros y frecuencia de búsqueda**.
 

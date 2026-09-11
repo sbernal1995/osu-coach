@@ -359,7 +359,20 @@ function setSettingsFeedback(message, kind = "info") {
   text("settings-feedback", message);
   $("settings-feedback").dataset.state = kind;
 }
+// Duration settings are stored in seconds; the form displays and accepts mm:ss.
+function isDurationSetting(spec) {
+  return spec.type === "integer" && spec.key.endsWith("_seconds");
+}
+function settingsDuration(value) {
+  return duration(value).padStart(5, "0");
+}
 function settingsInputValue(field) {
+  if (isDurationSetting(field.spec)) {
+    const match = /^(\d+):([0-5]\d)$/.exec(field.input.value.trim());
+    if (!match) return null;
+    const seconds = Number(match[1]) * 60 + Number(match[2]);
+    return Number.isSafeInteger(seconds) ? seconds : null;
+  }
   if (field.spec.type === "choice") return field.input.value;
   return field.spec.type === "boolean"
     ? field.input.checked
@@ -390,6 +403,8 @@ function applySettingsValues(settings) {
       settings?.defaults?.[field.spec.key] ??
       field.spec.default;
     if (field.spec.type === "boolean") field.input.checked = Boolean(value);
+    else if (isDurationSetting(field.spec))
+      field.input.value = settingsDuration(value);
     else
       field.input.value =
         value === undefined || value === null ? "" : String(value);
@@ -465,8 +480,22 @@ function renderSettings(state) {
           entry.value = option.value;
           input.append(entry);
         });
+      } else if (isDurationSetting(spec)) {
+        input.type = "text";
+        input.required = true;
+        input.placeholder = "mm:ss";
+        input.autocomplete = "off";
+        input.spellcheck = false;
+        input.addEventListener("blur", () => {
+          const value = settingsInputValue({ spec, input });
+          if (value !== null) input.value = settingsDuration(value);
+        });
       } else input.type = spec.type === "boolean" ? "checkbox" : "number";
-      if (spec.type !== "boolean" && spec.type !== "choice") {
+      if (
+        spec.type !== "boolean" &&
+        spec.type !== "choice" &&
+        !isDurationSetting(spec)
+      ) {
         input.required = true;
         input.inputMode = spec.type === "integer" ? "numeric" : "decimal";
         if (numeric(spec.min)) input.min = String(spec.min);
@@ -477,18 +506,32 @@ function renderSettings(state) {
             ? "1"
             : "any";
       }
-      const label = element("label", "", spec.label || spec.key);
+      const label = element(
+        "label",
+        "",
+        isDurationSetting(spec)
+          ? (spec.label || spec.key).replace("(segundos)", "(mm:ss)")
+          : spec.label || spec.key,
+      );
       label.htmlFor = id;
+      const displayValue = isDurationSetting(spec) ? settingsDuration : format;
       const bounds =
         spec.type === "boolean"
           ? ""
           : numeric(spec.min) && numeric(spec.max)
-            ? " Valores de " + format(spec.min) + " a " + format(spec.max) + "."
+            ? " Valores de " +
+              displayValue(spec.min) +
+              " a " +
+              displayValue(spec.max) +
+              "."
             : "";
       const description = element(
         "p",
         "settings-field-description",
-        (spec.description || "") + bounds,
+        (isDurationSetting(spec)
+          ? (spec.description || "").replace(/\b0\b/g, "00:00") +
+            " Ingresá minutos y segundos, por ejemplo 02:30."
+          : spec.description || "") + bounds,
       );
       description.id = id + "-description";
       const error = element("p", "settings-field-error");
@@ -526,6 +569,20 @@ function readSettingsChanges() {
     if (field.spec.type === "choice") {
       if (!(field.spec.options || []).some((option) => option.value === value))
         message = "Elegí una opción.";
+    } else if (isDurationSetting(field.spec)) {
+      if (value === null)
+        message = "Usá mm:ss, por ejemplo 02:30. Los segundos van de 00 a 59.";
+      else if (value < field.spec.min)
+        message = "El mínimo es " + settingsDuration(field.spec.min) + ".";
+      else if (value > field.spec.max)
+        message = "El máximo es " + settingsDuration(field.spec.max) + ".";
+      else if (
+        numeric(field.spec.step) &&
+        field.spec.step > 0 &&
+        (value - field.spec.min) % field.spec.step !== 0
+      )
+        message =
+          "Usá incrementos de " + settingsDuration(field.spec.step) + ".";
     } else if (field.spec.type !== "boolean") {
       if (value === null || !Number.isFinite(value))
         message = "Ingresá un número.";

@@ -534,6 +534,13 @@ main {
 #recommendations .compact-goal > span {
   display: inline;
 }
+#recommendations .compact-goal-target {
+  display: inline-block;
+}
+#recommendations .compact-goal-target[data-status="met"] {
+  color: var(--green);
+  font-weight: 600;
+}
 #recommendations .map-card > .map-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;

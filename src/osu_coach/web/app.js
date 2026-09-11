@@ -3780,20 +3780,64 @@ function compactMapCard(card, map, quest) {
   const goal = element("div", "compact-goal");
   goal.append(element("strong", "", "Objetivo: "));
   const targets = [
-    expected.grade_label ||
-      (expected.grade_min ? expected.grade_min + " o mejor" : "Completar"),
+    {
+      key: expected.grade_min || expected.grade_label ? "grade" : "complete",
+      label:
+        expected.grade_label ||
+        (expected.grade_min ? expected.grade_min + " o mejor" : "Completar"),
+    },
   ];
   if (numeric(expected.accuracy_min))
-    targets.push("≥" + accuracy(expected.accuracy_min).replace(/\s+%/, "%"));
+    targets.push({
+      key: "accuracy",
+      label: "≥" + accuracy(expected.accuracy_min).replace(/\s+%/, "%"),
+    });
   if (numeric(expected.misses_max))
-    targets.push("≤" + format(expected.misses_max) + " misses");
+    targets.push({
+      key: "misses",
+      label: "≤" + format(expected.misses_max) + " misses",
+    });
   if (numeric(expected.combo_min))
-    targets.push("≥" + format(expected.combo_min) + "×");
-  goal.append(element("span", "", targets.join(" · ")));
+    targets.push({
+      key: "combo",
+      label: "≥" + format(expected.combo_min) + "×",
+    });
+  // Use the same evaluated attempt as the detailed checklist, never a mix of plays.
+  const checks = Array.isArray(quest?.last_attempt?.checks)
+    ? quest.last_attempt.checks
+    : [];
+  const targetList = element("span", "compact-goal-targets");
+  targets.forEach(({ key, label }, index) => {
+    if (index) targetList.append(document.createTextNode(" · "));
+    const check = checks.find((item) => item?.key === key);
+    const status = ["met", "unmet", "unknown"].includes(check?.status)
+      ? check.status
+      : "pending";
+    const target = element("span", "compact-goal-target");
+    target.dataset.key = key;
+    target.dataset.status = status;
+    if (status === "met") {
+      const icon = element("span", "compact-goal-check", "✓ ");
+      icon.setAttribute("aria-hidden", "true");
+      target.append(icon);
+    }
+    target.append(document.createTextNode(label));
+    const description = {
+      met: "Cumplido en el último intento",
+      unmet: "Por alcanzar en el último intento",
+      unknown: "No verificable en el último intento",
+      pending: "Pendiente de un intento",
+    }[status];
+    target.title =
+      description +
+      (check ? " · Resultado: " + questCheckValue(check, check.actual) : "");
+    target.append(element("span", "visually-hidden", " (" + description + ")"));
+    targetList.append(target);
+  });
+  goal.append(targetList);
   goal.title =
-    "Completá el mapa: " +
-    targets.join(" · ") +
-    (numeric(expected.combo_min) ? " de combo" : "");
+    "El verde indica los requisitos cumplidos en el último intento. " +
+    "Completá el mapa y cumplí todos los objetivos en una misma partida.";
   if (!map.expectation && map.goal) goal.append(element("span", "", map.goal));
   const status = quest?.status;
   card.replaceChildren(heading, byline, stats);

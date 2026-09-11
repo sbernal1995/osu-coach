@@ -1014,17 +1014,17 @@ function renderCoachProgress(state) {
   text(
     "coach-initial-label",
     newMethod
-      ? "Primera referencia comparable"
+      ? "Inicio de la comparación"
       : "Primera referencia calibrada",
   );
   text(
     "coach-change-label",
-    newMethod ? "Cambio con el cálculo actual" : "Cambio desde la calibración",
+    newMethod ? "Variación desde el inicio" : "Cambio desde la calibración",
   );
   text(
     "coach-best-label",
     newMethod
-      ? "Mejor referencia comparable"
+      ? "Máxima referencia comparable"
       : "Mejor referencia de esta calibración",
   );
   $("coach-method-note").hidden = !progress.method_note;
@@ -1050,12 +1050,12 @@ function renderCoachProgress(state) {
     maximumRank
       ? "Rango máximo alcanzado"
       : numeric(next.stars)
-        ? "Próximo rango: " + stars(next.stars)
+        ? "Próximo logro: demostrar " + stars(next.stars)
         : "Próximo rango por definir",
   );
   $("coach-next-count").hidden = maximumRank;
   $("coach-next-progress").hidden = maximumRank;
-  $("coach-rank-requirements").closest("details").hidden = maximumRank;
+  $("coach-rank-goal").hidden = maximumRank;
   const required = Math.max(
     1,
     Number(next.required_maps) ||
@@ -1066,43 +1066,44 @@ function renderCoachProgress(state) {
     Math.min(required, Number(next.completed_maps) || 0),
   );
   const missing = required - completed;
-  text("coach-next-count", completed + "/" + required);
+  text("coach-next-count", completed + " de " + required + " mapas");
   $("coach-next-progress").setAttribute("aria-valuemax", String(required));
   $("coach-next-progress").setAttribute("aria-valuenow", String(completed));
   $("coach-next-fill").style.width = (completed / required) * 100 + "%";
+  const low = Number(next.stars);
+  const high = low + Number(settingValue(state, "comparable_star_band", 0.5));
+  const band = numeric(next.stars) ? `${format(low)}–${format(high)} ★` : "la dificultad del próximo rango";
   const missingMessage = missing
-    ? "Te " +
-      (missing === 1 ? "falta " : "faltan ") +
-      missing +
-      (missing === 1
-        ? " mapa distinto con un resultado sólido."
-        : " mapas distintos con resultados sólidos.")
-    : "Los mapas requeridos están completos.";
+    ? `Te ${missing === 1 ? "falta" : "faltan"} ${missing} ${missing === 1 ? "dificultad distinta" : "dificultades distintas"} de ${band} con los objetivos de abajo.`
+    : "Ya reuniste los mapas requeridos. El rango se actualiza al aceptar los resultados.";
   text(
     "coach-next-message",
     maximumRank
-      ? "Consolidaste el rango más alto del coach. Podés seguir practicando según tu referencia actual."
-      : (next.calibrated ? "" : "Primero completá la calibración actual. ") +
-          missingMessage,
+      ? "Alcanzaste el rango más alto del coach. Seguí practicando con tu referencia actual."
+      : next.calibrated ? missingMessage : "Primero completá la calibración. Después podrás sumar mapas para este logro.",
   );
-  const requirements = Array.isArray(next.requirements)
-    ? next.requirements.filter(
-        (item) => typeof item === "string" && item.trim(),
-      )
-    : [];
-  const requirementsRoot = $("coach-rank-requirements");
-  requirementsRoot.replaceChildren(
+  const missLimit = Number(settingValue(state, "strong_miss_percent", 0.5));
+  const requirements = [
+    `Elegí una dificultad de ${band}. Repetir una que ya cuenta no suma otro mapa; otra dificultad de la misma canción sí puede contar.`,
+    "Terminá y aprobá el mapa (el registro debe mostrar al menos 98 % completado).",
+    `En ese mismo intento: ≥${format(settingValue(state, "strong_accuracy", 97))} % de precisión y ≥${format(settingValue(state, "strong_combo_percent", 80))} % del combo máximo.`,
+    `Misses: hasta ${format(missLimit)} % de los objetos juzgados. Por ejemplo, con 1.000 objetos, hasta ${Math.floor(missLimit * 10)} misses.`,
+  ];
+  $("coach-rank-requirements").replaceChildren(
     ...requirements.map((item) => element("li", "", item)),
   );
+  text("coach-rank-window", `Cuentan los mejores intentos válidos de cada dificultad entre tus últimas ${next.window_plays || settingValue(state, "reference_plays", 100)} partidas de los últimos ${next.window_days || settingValue(state, "reference_days", 30)} días. El avance hacia este logro puede cambiar cuando un resultado sale de esa ventana; los rangos ya ganados se conservan.`);
   const maps = Array.isArray(next.qualifying_maps)
     ? next.qualifying_maps.filter((item) => item && item.title)
     : [];
   const mapsRoot = $("coach-rank-maps");
   mapsRoot.replaceChildren();
+  if (!maps.length) mapsRoot.append(element("p", "", "Todavía no hay resultados que cuenten para este logro."));
   if (maps.length)
-    mapsRoot.append(element("p", "", "Ya aportaron al próximo rango:"));
+    mapsRoot.append(element("p", "", "Estos resultados ya cumplen los objetivos:"));
   maps.forEach((map) => {
     const result = [map.title + (map.version ? " [" + map.version + "]" : "")];
+    if (numeric(map.stars)) result.push(stars(map.stars));
     if (numeric(map.accuracy))
       result.push(accuracy(map.accuracy) + " de precisión");
     if (numeric(map.misses))
@@ -1142,14 +1143,7 @@ function renderCoachProgress(state) {
       (progress.since ? " desde " + coachDate(progress.since) : "") +
       ". "
     : "";
-  text(
-    "coach-progress-method",
-    coverage +
-      "El rango ganado se conserva; la práctica sigue tu referencia actual. " +
-      (newMethod
-        ? "Primera, mejor y cambio comparan referencias calibradas con el cálculo y los ajustes actuales, desde tu última recalibración. La gráfica conserva también las referencias anteriores."
-        : "La comparación y la gráfica corresponden a la última calibración."),
-  );
+  text("coach-progress-method", coverage + "Cada punto guarda la referencia calculada al registrar una partida.");
   text(
     "coach-history-method",
     (progress.method ||

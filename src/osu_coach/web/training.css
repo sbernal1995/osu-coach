@@ -1260,3 +1260,13 @@ main {
 .evolution-row { display: flex; flex-direction: column; gap: .35rem; border: 1px solid #353544; border-radius: 8px; padding: .8rem; }
 .evolution-row strong { overflow-wrap: anywhere; }
 .evolution-row small { color: #b9b6ca; }
+
+.coach-reference-heading {
+  margin: 24px 0 8px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 16px;
+}
+#coach-rank-goal h3 { font-size: 14px; margin: 14px 0 8px; }
+#coach-rank-goal li { margin: 8px 0; line-height: 1.5; }
+.coach-next-title { flex-wrap: wrap; gap: 8px 14px; }

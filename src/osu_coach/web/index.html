@@ -701,13 +701,19 @@
                     <div id="coach-next-fill" class="coach-next-fill"></div>
                   </div>
                   <p id="coach-next-message" class="coach-next-message"></p>
-                  <details class="coach-rank-rules">
-                    <summary>Qué necesitás para subir</summary>
+                  <div id="coach-rank-goal" class="coach-rank-rules">
+                    <h3>Qué jugar y qué conseguir</h3>
                     <ul id="coach-rank-requirements"></ul>
-                    <div id="coach-rank-maps" class="coach-rank-maps"></div>
-                  </details>
+                    <details>
+                      <summary>Mapas que ya cuentan y vigencia</summary>
+                      <div id="coach-rank-maps" class="coach-rank-maps"></div>
+                      <p id="coach-rank-window" class="coach-progress-method"></p>
+                    </details>
+                  </div>
                 </div>
               </div>
+              <h3 class="coach-reference-heading">Cómo cambia tu referencia para entrenar</h3>
+              <p class="coach-progress-method">Esta referencia orienta las recomendaciones y puede subir o bajar según tus resultados y los mapas que jugás. Una bajada por sí sola no demuestra que hayas empeorado. El máximo rango demostrado se conserva.</p>
               <div class="coach-reference-metrics">
                 <div>
                   <span id="coach-initial-label" class="coach-metric-label"
@@ -737,11 +743,6 @@
                   >
                 </div>
               </div>
-              <p
-                id="coach-method-note"
-                class="coach-progress-method"
-                hidden
-              ></p>
               <div class="coach-chart-wrap">
                 <p class="coach-chart-title">
                   Tu referencia a lo largo del tiempo
@@ -750,6 +751,11 @@
                 <p id="coach-chart-legend" class="coach-chart-legend"></p>
               </div>
               <p id="coach-progress-method" class="coach-progress-method"></p>
+              <details class="coach-rank-rules">
+                <summary>Qué comparan estos números y por qué hay tramos distintos</summary>
+                <p class="coach-progress-method">Inicio: primera referencia calibrada comparable. Actual: referencia para elegir mapas. Variación: actual menos inicio. Máxima: mayor referencia comparable. Se comparan puntos con el mismo cálculo y ajustes, desde la última recalibración.</p>
+                <p id="coach-method-note" class="coach-progress-method" hidden></p>
+              </details>
               <div class="coach-progress-details">
                 <details id="coach-reference-history">
                   <summary id="coach-history-label">

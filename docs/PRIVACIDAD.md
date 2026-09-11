@@ -18,7 +18,7 @@ El panel escucha en `127.0.0.1`. Las operaciones de escritura del panel usan un 
 
 ## Consultas de Internet
 
-El coach consulta páginas públicas de osu! para obtener tags y candidatos de mapas. Las solicitudes usan identificadores públicos de conjuntos y parámetros de paginación. Los filtros de dificultad y los requisitos de entrenamiento se aplican dentro del coach. No se envían el nombre del jugador, sus puntuaciones, la lista de mapas excluidos ni la configuración personal.
+El coach consulta páginas públicas de osu! para obtener tags y candidatos de mapas. Las solicitudes usan identificadores públicos de conjuntos y parámetros de paginación. Para calcular candidatos con mods, también puede descargar la definición pública .osu de una dificultad por su ID. Guarda esos archivos y sus cálculos en la carpeta local de datos; no descarga audio ni importa canciones automáticamente. Los filtros de dificultad y los requisitos de entrenamiento se aplican dentro del coach. No se envían el nombre del jugador, sus puntuaciones, la lista de mapas excluidos ni la configuración personal.
 
 El servidor remoto puede registrar las solicitudes y la dirección IP, como ocurre al visitar una página web. La búsqueda no necesita cookies, una cuenta ni una clave de API. No hay un servicio de analítica del coach.
 

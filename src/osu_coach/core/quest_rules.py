@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 import math
 import re
 
+from osu_coach.core.mod_policy import conditions_match, describe_play, label as mod_label
 from osu_coach.core.grades import evaluate_grade, normalize_grade
 
 
@@ -145,5 +146,9 @@ without an explicit completion fraction of at least 0.98.
             met = actual <= target if maximum else actual >= target
             status = "met" if met else "unmet"
         checks.append({"key": key, "label": label, "target": target, "actual": actual, "status": status})
+    if beatmap.get("play_conditions"):
+        conditions = beatmap["play_conditions"]
+        checks.insert(0, {"key": "mods", "label": "Mods y velocidad", "target": mod_label(conditions),
+                          "actual": describe_play(play), "status": "met" if conditions_match(conditions, play) else "unmet"})
     return {"play_id": play["id"], "played_at": play["played_at"],
             "completed": all(check["status"] == "met" for check in checks), "checks": checks}

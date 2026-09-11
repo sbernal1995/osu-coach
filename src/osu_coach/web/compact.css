@@ -970,7 +970,8 @@ th {
   border-radius: 6px;
   padding: 16px;
 }
-.settings-field input {
+.settings-field input,
+.settings-field select {
   min-height: 36px;
 }
 .settings-intro {
@@ -1686,4 +1687,8 @@ footer {
     flex-direction: column;
     gap: 0.4rem;
   }
+}
+
+.settings-field-choice {
+  grid-template-columns: minmax(0, 1fr);
 }

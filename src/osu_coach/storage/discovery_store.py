@@ -10,6 +10,7 @@ import threading
 import time
 
 from osu_coach.integrations.discovery_source import candidate_quality_ok, MIN_RATING, MIN_RATING_VOTES, MIN_PLAY_COUNT
+from osu_coach.core.mod_policy import public_requirements
 from osu_coach.settings import DEFAULTS, coach_settings, settings_context, get_setting
 
 
@@ -167,7 +168,7 @@ class DiscoveryStore:
         needs = copy.deepcopy(needs or [])
         demand = bool(needs)
         excluded_songs = tuple(excluded_songs)
-        requirements = [{key: item[key] for key in ("min_stars", "max_stars", "max_bpm", "max_ar", "max_length")
+        requirements = [{key: item[key] for key in ("min_stars", "max_stars", "max_bpm", "max_ar", "min_length", "max_length")
                          if key in item} for item in (envelope if envelope is not None else needs)]
         identity = self._profile(sample)
         now = time.time()
@@ -201,6 +202,10 @@ class DiscoveryStore:
                 new_values = [r.get(field) for r in requirements if r.get(field) is not None]
                 if old_values and (not new_values or max(new_values) >= max(old_values) + tolerance):
                     restart = True
+            old_min = [r.get("min_length", 0) or 0 for r in previous]
+            new_min = [r.get("min_length", 0) or 0 for r in requirements]
+            if old_min and (not new_min or min(new_min) < min(old_min)):
+                restart = True
             cursor = None if restart else search.get("cursor")
             excluded = tuple(set(exclude_ids) | {_identifier(m) for m in self.maps if candidate_quality_ok(m)} - {None})
             self.status.update(state="loading", message=("Buscando automáticamente mapas adecuados para las misiones y su reserva…"
@@ -213,8 +218,9 @@ class DiscoveryStore:
             try:
                 lower = max(.1, baseline - max(.7, max(get_setting("warmup_offset"), get_setting("recovery_drop")) + get_setting("star_tolerance_below")))
                 upper = baseline + max(get_setting("star_tolerance_above") + get_setting("challenge_increment"), .4)
-                requested_lower = [item["min_stars"] for item in requirements if item.get("min_stars") is not None]
-                requested_upper = [item["max_stars"] for item in requirements if item.get("max_stars") is not None]
+                effective_requirements = public_requirements(requirements)
+                requested_lower = [item["min_stars"] for item in effective_requirements if item.get("min_stars") is not None]
+                requested_upper = [item["max_stars"] for item in effective_requirements if item.get("max_stars") is not None]
                 if requested_lower:
                     lower = max(.1, min(lower, min(requested_lower)))
                 if requested_upper:
@@ -231,7 +237,7 @@ class DiscoveryStore:
                     if fetch is None:
                         batch = {"maps": self.fetcher(lower, upper), "next_cursor": None, "exhausted": True}
                     else:
-                        batch = fetch(lower, upper, cursor=cursor, exclude_ids=excluded, requirements=requirements,
+                        batch = fetch(lower, upper, cursor=cursor, exclude_ids=excluded, requirements=effective_requirements,
                                       **({"excluded_songs": excluded_songs} if excluded_songs else {}))
                     if (not isinstance(batch, dict) or not _valid_maps(batch.get("maps"))
                             or not isinstance(batch.get("exhausted"), bool)):

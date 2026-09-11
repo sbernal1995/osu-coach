@@ -31,6 +31,9 @@ from osu_coach.storage.tag_store import TagStore
 from osu_coach.integrations.telemetry import TosuTracker, read_snapshot
 from osu_coach.beatmaps.map_search import search_details
 from osu_coach.core.played_history import PlayedHistory
+from osu_coach.core import mod_policy
+from osu_coach.core.quest_rules import evaluate_attempt
+from osu_coach.storage.variant_store import VariantStore
 from osu_coach.integrations.lazer_calculator import CALCULATOR_ID
 from osu_coach.settings import validate_settings, load_settings, settings_snapshot, coach_settings, get_setting, DEFAULTS
 
@@ -66,9 +69,13 @@ def detect_maps():
     return str(lazer if lazer.is_dir() else stable)
 
 
-def profile_key(play):
+def raw_profile_key(play):
     return json.dumps([str(play.get("player", "Local")).casefold(), play.get("client", "unknown"),
                        play.get("mode", 0), play.get("mod_key", DEFAULT_MOD_KEY)], separators=(",", ":"))
+
+
+def profile_key(play):
+    return play.get("coach_profile") or raw_profile_key(play)
 
 
 class Coach:
@@ -97,6 +104,7 @@ class Coach:
         self.progress_store = ProgressStore(self.db)
         self.db.commit()
         self.catalog = []
+        self.variants = VariantStore(self.data, self.stop)
         self.catalog_stale = False
         self.adjusted = {}
         self.scanning = False
@@ -127,6 +135,33 @@ class Coach:
             with self.db:
                 self.sync_progress(self.active)
 
+    def associate_mission(self, play):
+        play.pop("coach_profile", None)
+        owner = json.loads(raw_profile_key(play))[:3]
+        rows = self.db.execute("SELECT scope, data FROM quest_boards WHERE status='active'").fetchall()
+        rows.sort(key=lambda row: json.loads(row[0])[0] != self.active)
+        for scope, data in rows:
+            profile, since = json.loads(scope)
+            if since != self.config["since"] or json.loads(profile)[:3] != owner:
+                continue
+            board = json.loads(data)
+            for group in board["groups"]:
+                for quest in group["quests"]:
+                    if quest["status"] not in {"pending", "in_progress"} or not quest["map"].get("play_conditions"):
+                        continue
+                    if (mod_policy.conditions_match(quest["map"]["play_conditions"], play)
+                            and evaluate_attempt(quest, {**play, "needs_confirmation": False}) is not None):
+                        play["coach_profile"] = profile
+                        return
+
+    def recommendation_sample(self, sample):
+        # A prescribed mod attempt stays in its training profile. Do not change
+        # the next recommendation policy to the last variant it happened to use.
+        if not sample or not self.active or not sample.get("coach_profile"):
+            return sample
+        saved = json.loads(json.loads(self.active)[3])
+        return {**sample, "mods": saved.get("mods", []), "mod_key": json.loads(self.active)[3]}
+
     @coach_settings
     def add_play(self, play):
         if play.get("mode", 0) != 0:
@@ -141,6 +176,7 @@ class Coach:
                 for field in ("title", "artist", "version"):
                     if not play.get(field):
                         play[field] = beatmap.get(field)
+            self.associate_mission(play)
             status = "pending" if play.get("needs_confirmation") else "accepted"
             with self.db:
                 inserted = self.db.execute("INSERT OR IGNORE INTO plays VALUES (?, ?, ?)",
@@ -184,6 +220,8 @@ class Coach:
             if not row:
                 raise ValueError("Esa partida ya fue revisada.")
             play = json.loads(row[0])
+            if not play.get("coach_profile"):
+                self.associate_mission(play)
             play["needs_confirmation"] = False
             play["evidence"] = "user_confirmed" if accept else "user_rejected"
             with self.db:
@@ -351,7 +389,7 @@ class Coach:
             active = self.training_plays()
             excluded = {int(number(m.get("id"))) for m in self.catalog}
             excluded.update(int(number(p.get("beatmap_id"))) for p in active)
-            self.discovery_store.sync(state["profile"]["baseline"], active[0] if active else None, force=force,
+            self.discovery_store.sync(state["profile"]["baseline"], mod_policy.public_sample(self.recommendation_sample(active[0] if active else None)), force=force,
                 needs=state["discovery"]["search_needs"], envelope=state["discovery"]["limits"],
                 exclude_ids=excluded - {0}, excluded_songs=self.song_bans.tokens(song_owner(self.active)))
 
@@ -396,6 +434,14 @@ class Coach:
             self.stop.wait(1)
 
     def catalog_for(self, sample):
+        sample = self.recommendation_sample(sample)
+        if get_setting("recommendation_mods") != "profile":
+            return self.variants.variants(self.catalog, mod_policy.options(sample))
+        maps, warning = self.profile_catalog_for(sample)
+        value = mod_policy.options(sample)[0]
+        return [mod_policy.stamp(m, value) for m in maps], warning
+
+    def profile_catalog_for(self, sample):
         if not sample:
             return self.catalog, ""
         settings = json.loads(sample.get("mod_key", "{}"))
@@ -440,10 +486,16 @@ class Coach:
     def state(self, *, ensure_quests=True):
         with self.lock:
             active = self.training_plays()
-            sample = active[0] if active else None
+            sample = self.recommendation_sample(active[0] if active else None)
             profile = assess(active, since=self.config["since"], initial=self.config.get("initial_stars", 2.5))
-            maps, mod_warning = self.catalog_for(sample)
-            maps = list(maps) + self.discovery_store.candidates(self.catalog, sample)
+            maps, mod_warning = (self.catalog_for(sample) if get_setting("recommendation_mods") == "profile" else ([], ""))
+            public_sample = mod_policy.public_sample(sample)
+            online_maps = self.discovery_store.candidates(self.catalog, public_sample)
+            if get_setting("recommendation_mods") != "profile":
+                # One queue for the combined pool, so online work cannot cancel local work.
+                maps, mod_warning = self.variants.variants(self.catalog + online_maps, mod_policy.options(sample))
+            else:
+                maps = list(maps) + [mod_policy.stamp(m, mod_policy.options(sample)[0]) for m in online_maps]
             local_keys = {str(m["key"]): m for m in self.catalog if m.get("key")}
             local_ids = {int(number(m["id"])): m for m in self.catalog if number(m.get("id")) > 0}
             with self.discovery_store.lock:
@@ -494,6 +546,8 @@ class Coach:
                 def skip_reason(quest):
                     if song_tokens(quest["map"]) & banned and not self.quest_is_protected(quest, pending):
                         return "song_banned"
+                    if not mod_policy.preference_ok(quest["map"], sample) and not self.quest_is_protected(quest, pending):
+                        return "preferences_changed"
                     if self.can_skip_played_quest(quest, history, pending):
                         return "played_before_assignment"
                     if self.can_skip_download_quality(quest, pending, local_keys, local_ids, popularity):
@@ -516,7 +570,9 @@ class Coach:
                 limits = {"stage": group["stage"], "label": group["label"], "target": group["target"],
                           "min_stars": max(.1, group["target"] - get_setting("star_tolerance_below")),
                           "max_stars": group["target"] + get_setting("star_tolerance_above"),
-                          **{"max_" + field: limit for field, limit in ceilings.items()}}
+                          **{"max_" + field: limit for field, limit in ceilings.items()},
+                          **({"min_length": get_setting("recommendation_min_seconds")} if get_setting("recommendation_min_seconds") else {}),
+                          **({"max_length": get_setting("recommendation_max_seconds")} if get_setting("recommendation_max_seconds") else {})}
                 envelope.append(limits)
                 if count < 3:
                     needs.append({**limits, "missing": 3 - count})
@@ -536,17 +592,18 @@ class Coach:
                 excluded = {int(number(m.get("id"))) for m in self.catalog}
                 excluded.update(int(number(p.get("beatmap_id"))) for p in active)
                 excluded.update(int(number(q.get("map", {}).get("id"))) for q in completed_history)
-                self.discovery_store.sync(profile["baseline"], sample, needs=search_needs, envelope=envelope,
+                self.discovery_store.sync(profile["baseline"], public_sample, needs=search_needs, envelope=envelope,
                                           exclude_ids=excluded - {0}, excluded_songs=banned)
-            discovery = self.discovery_store.snapshot(self.catalog, sample, needs=needs)
+            discovery = self.discovery_store.snapshot(self.catalog, public_sample, needs=needs)
             discovery.update(reserve=reserve, search_needs=search_needs, limits=envelope,
                              scope="Catálogo público de osu!, sin límite de antigüedad.")
             if search_needs and not needs:
-                discovery["next_retry"] = self.discovery_store.snapshot(self.catalog, sample, needs=search_needs)["next_retry"]
+                discovery["next_retry"] = self.discovery_store.snapshot(self.catalog, public_sample, needs=search_needs)["next_retry"]
             quest_availability = {}
-            current_difficulties = {m["key"]: m for m in maps
+            current_difficulties = {(m["key"], mod_policy.identity(m.get("play_conditions") or mod_policy.options(sample)[0])): m for m in maps
                                     if m.get("calculator") == CALCULATOR_ID and number(m.get("stars")) > 0}
-            current_difficulty_ids = {m["id"]: m for m in current_difficulties.values() if m.get("id")}
+            current_difficulty_ids = {(m["id"], mod_policy.identity(m.get("play_conditions") or mod_policy.options(sample)[0])): m
+                                      for m in current_difficulties.values() if m.get("id")}
             if quest_board:
                 for group in quest_board["groups"]:
                     for quest in group["quests"]:
@@ -560,11 +617,14 @@ class Coach:
                                           "title_romanized", "artist_romanized"):
                                 if local_map.get(field):
                                     lookup[field] = local_map[field]
-                        current = current_difficulties.get(beatmap.get("key"))
+                        conditions = beatmap.get("play_conditions") or (mod_policy.play_context(sample) if sample else mod_policy.context())
+                        signature = mod_policy.identity(conditions)
+                        current = current_difficulties.get((beatmap.get("key"), signature))
                         if current is None and is_remote(beatmap):
-                            current = current_difficulty_ids.get(beatmap.get("id"))
+                            current = current_difficulty_ids.get((beatmap.get("id"), signature))
                         quest_availability[quest["id"]] = {
                             "installed": local_map is not None, **search_details(lookup),
+                            "mods_label": mod_policy.label(conditions),
                             "difficulty": ({key: current[key] for key in ("stars", "calculator")} if current else None),
                             "difficulty_pending": self.catalog_stale and local_map is not None,
                             "popularity": copy.deepcopy(self.download_evidence(beatmap, popularity).get("popularity"))}
@@ -613,6 +673,7 @@ class Coach:
 
     def close(self):
         self.stop.set()
+        self.variants.close()
         if self.child and self.child.poll() is None:
             self.child.terminate()
             try:

@@ -7,6 +7,7 @@ import math
 from statistics import mean
 from urllib.parse import urlencode
 
+from osu_coach.core.mod_policy import duration_ok, stamp as stamp_mods, play_context, context as mod_context
 from osu_coach.core.expectations import expectation_for
 from osu_coach.settings import get_setting
 from osu_coach.beatmaps.map_search import search_details
@@ -312,7 +313,7 @@ def recommend(catalog, profile, limit=3, tag_analysis=None, player_profile=None,
             key = str(m.get("key"))
             sr = number(m.get("stars"))
             song = (str(m.get("artist", "")).casefold(), str(m.get("title", "")).casefold())
-            if (m.get("mode", 0) != 0 or key in used or song in used_songs or sr <= 0
+            if (m.get("mode", 0) != 0 or not duration_ok(m) or key in used or song in used_songs or sr <= 0
                     or not max(.1, target - get_setting('star_tolerance_below')) - 1e-9 <= sr <= target + get_setting('star_tolerance_above') + 1e-9):
                 continue
             # Keep simultaneous jumps in reading and speed bounded.
@@ -339,6 +340,8 @@ def recommend(catalog, profile, limit=3, tag_analysis=None, player_profile=None,
             song = (str(m.get("artist", "")).casefold(), str(m.get("title", "")).casefold())
             if (set_id and set_id in chosen_sets) or song in used_songs:
                 continue
+            if not m.get("play_conditions"):
+                m = stamp_mods(m, play_context(profile["window"][-1]) if profile.get("window") else mod_context())
             result = {k: v for k, v in m.items() if k not in {"path"}}
             expected = expectation_for(m, profile, stage, tag_analysis)
             if focus and stage == "practice":

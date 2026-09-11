@@ -1233,3 +1233,12 @@ main {
     animation: none !important;
   }
 }
+
+.map-stats .map-mods {
+  color: var(--pink);
+  font-weight: 600;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 1px 5px;
+  white-space: nowrap;
+}

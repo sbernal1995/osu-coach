@@ -127,6 +127,19 @@ Por ejemplo, inicialmente la referencia considera hasta **100 partidas en 30 dí
 
 Las metas de las misiones que ya tenés asignadas permanecen fijas. Los criterios vigentes se aplican al preparar nuevas propuestas. Recalibrar establece un nuevo comienzo para estimar tu rendimiento; conserva las partidas guardadas y los rangos ganados.
 
+### Duración y mods
+
+En **Ajustes → Recomendaciones: duración y mods** podés configurar:
+
+- **Duración mínima y máxima**, en segundos. 0 deja ese extremo sin límite. Por ejemplo, 90 y 240 admiten mapas entre 1:30 y 4:00. La duración es el tiempo jugable y refleja la velocidad del mod: DT ×1,5 acorta un mapa de 3 minutos a 2 minutos; HT ×0,75 lo lleva a 4 minutos.
+- **Mantener los mods del perfil**, el comportamiento inicial.
+- **Libre**, para comparar Sin mods, HD, HR, DT, HT, HD+HR, HD+DT y HD+HT.
+- **Forzar una combinación**, para que las nuevas misiones usen exclusivamente esa opción. DT y HT usan su velocidad estándar.
+
+Las tarjetas indican los mods requeridos. Las estrellas, BPM, AR, duración y combo se calculan con esas condiciones. Las metas usan evidencia de la misma combinación; si todavía no hay resultados, se presentan como provisionales. El primer cálculo de variantes de una biblioteca grande puede tardar unos minutos, funciona en segundo plano y se guarda para las próximas sesiones.
+
+Cambiar estos filtros renueva las misiones pendientes que dejaron de cumplirlos y que todavía no intentaste. Las misiones en práctica conservan sus condiciones, objetivos e intentos, aunque queden fuera del filtro nuevo. La exclusión de dificultades ya jugadas se mantiene: Libre no propone repetir un mismo mapa cambiándole los mods.
+
 ## Cómo usar las recomendaciones
 
 Podés empezar con un mapa de **Entrar en ritmo**, continuar con dos o tres de **Práctica principal** y cerrar con **Consolidar**. El desafío aparece cuando los resultados recientes cumplen las condiciones que indica el panel.
@@ -135,7 +148,7 @@ Cada tarjeta explica la meta para ese mapa. Es un objetivo de entrenamiento, no 
 
 **Copiar búsqueda** copia el ID de la dificultad cuando está disponible; pegalo en la búsqueda del juego. osu! [admite buscar mapas por ID](https://osu.ppy.sh/wiki/en/Beatmap_search). Las alternativas por título o mapper pueden devolver varios resultados: elegí la dificultad de la tarjeta.
 
-Las nuevas misiones evitan dificultades exactas ya jugadas en ese perfil. Otras dificultades de la misma canción pueden seguir apareciendo. El perfil se separa por jugador, cliente y configuración de mods.
+Las nuevas misiones evitan dificultades exactas ya jugadas en ese perfil. Otras dificultades de la misma canción pueden seguir apareciendo. El perfil se separa por jugador, cliente y configuración de mods. Las partidas que cumplen las condiciones de una misión con mods recomendados se vinculan a la progresión que propuso esa misión; se conservan los mods y las estrellas observados. Jugar una combinación distinta fuera de una misión mantiene su perfil separado.
 
 Si una canción no te gusta, abrí **Ver objetivos y detalles** de su misión y usá **No me gusta esta canción**. Se excluyen todas sus dificultades y otros sets con el mismo artista y título, incluidas las variantes romanizadas conocidas. La misión se reemplaza automáticamente cuando hay otra candidata. Si estás jugando ese mapa o falta confirmar su resultado, el reemplazo espera para conservar el intento. Podés deshacerlo en **Ajustes → Canciones excluidas**. El veto se guarda por jugador, persiste entre clientes, mods y recalibraciones, y conserva partidas y logros. Títulos de remixes o versiones distintos se tratan como canciones distintas.
 
@@ -145,7 +158,7 @@ La referencia reciente puede subir o bajar. El rango personal ganado se conserva
 
 ## Mapas por descargar
 
-El coach busca canciones **antiguas y recientes**: nuevas para tus recomendaciones no significa recién publicadas. La [búsqueda pública de osu! sin iniciar sesión](https://github.com/ppy/osu-web/blob/master/app/Libraries/Search/BeatmapsetSearchRequestParams.php) ordena por fecha de clasificación y limita los filtros disponibles. Por eso el coach recorre páginas hacia mapas más antiguos y aplica localmente tus límites de estrellas, AR y BPM, junto con tus exclusiones. La duración no excluye mapas ni modifica tu dificultad de referencia. En «Entrar en ritmo» se da una preferencia suave a los mapas de hasta 150 segundos, configurable en Ajustes (0 la desactiva); práctica y consolidación admiten cualquier duración. Los antiguos ajustes de factor y margen de duración se retiran automáticamente al actualizar, conservando las demás preferencias.
+El coach busca canciones **antiguas y recientes**: nuevas para tus recomendaciones no significa recién publicadas. La [búsqueda pública de osu! sin iniciar sesión](https://github.com/ppy/osu-web/blob/master/app/Libraries/Search/BeatmapsetSearchRequestParams.php) ordena por fecha de clasificación y limita los filtros disponibles. Por eso el coach recorre páginas hacia mapas más antiguos y aplica localmente tus límites de estrellas, AR y BPM, junto con tus exclusiones. La duración solo excluye mapas si configurás un mínimo o un máximo; no modifica tu dificultad de referencia. En «Entrar en ritmo» se da una preferencia suave a los mapas de hasta 150 segundos, configurable en Ajustes (0 la desactiva); todas las etapas respetan los límites de duración que elijas. Los antiguos ajustes de factor y margen de duración se retiran automáticamente al actualizar, conservando las demás preferencias.
 
 La pantalla mantiene hasta **9 misiones** y prepara una **reserva de 6 canciones online por etapa** fuera de las misiones actuales. La reserva evita que la búsqueda se detenga apenas se llena el tablero. Podés configurar su tamaño en **Ajustes → Mapas para descargar**, o ponerlo en 0 para buscar solo cuando falten misiones. Los filtros y los conteos de reserva aparecen en **Filtros y frecuencia de búsqueda**.
 
@@ -159,7 +172,7 @@ Con la configuración inicial, un conjunto descargable necesita cumplir **a la v
 
 Los favoritos se muestran como información adicional y no sustituyen esos requisitos. Los umbrales se pueden consultar y ajustar en **Configuración**. Los datos de valoración y reproducciones pertenecen al conjunto de dificultades; no prueban la calidad específica de cada dificultad.
 
-El botón **Ver / descargar** abre osu!. La descarga e importación se realizan desde el juego o el sitio oficial. La búsqueda online se pausa para perfiles con mods o velocidad alterada cuando no hay estrellas comparables.
+El botón **Ver / descargar** abre osu!. La descarga e importación se realizan desde el juego o el sitio oficial. En modo Libre o al forzar un mod, se obtiene el archivo público de definición de la dificultad para calcular sus estrellas antes de recomendarla. Esto no descarga la canción ni importa el mapa al juego. Si mantenés los mods del perfil y no hay estrellas online comparables, la búsqueda se pausa.
 
 La fuente pública tiene cobertura limitada y puede cambiar de formato. El panel informa los errores y conserva los candidatos válidos guardados.
 
@@ -178,7 +191,7 @@ Las consultas públicas de mapas y tags envían identificadores públicos de con
 - Si falta una fecha verificable, el panel puede pedirte confirmar el intento. Las transiciones muy rápidas pueden perderse entre lecturas.
 - El grado de stable depende también de los juicios; la precisión por sí sola no permite prometer una S. Los datos ausentes permanecen pendientes.
 - El catálogo utiliza una versión fijada del cálculo de osu!lazer. Al actualizar ese motor, se descarta la caché de estrellas anterior y se recalcula la biblioteca. Las misiones conservan sus objetivos; las tarjetas muestran las estrellas actualizadas de la misma dificultad. Las partidas y los ascensos ya registrados se conservan. Una versión futura del juego puede volver a cambiar la fórmula.
-- Las dificultades aún no descargadas usan las estrellas publicadas por osu!; al importarlas se calculan localmente. La dificultad con mods se calcula cuando sus ajustes son compatibles y están disponibles.
+- Las dificultades aún no descargadas usan las estrellas publicadas por osu!; al importarlas se calculan localmente. Las variantes con mods solo se recomiendan después de calcularlas. Una variante que no pudo calcularse queda fuera hasta reintentarse.
 - Los criterios son heurísticas de práctica; todavía no constituyen un método de entrenamiento validado.
 
 ## Problemas frecuentes

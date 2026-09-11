@@ -14,7 +14,22 @@ def field(key, label, default, minimum, maximum, step, group, description):
             "step": step, "type": kind, "group": group, "description": description}
 
 
+def choice(key, label, default, options, description):
+    return {"key": key, "label": label, "default": default, "type": "choice",
+            "options": [{"value": value, "label": text} for value, text in options],
+            "group": "Recomendaciones: duración y mods", "description": description}
+
+
 SCHEMA = [
+    field("recommendation_min_seconds", "Duración mínima (segundos)", 0, 0, 7200, 1, "Recomendaciones: duración y mods", "Duración al jugar, después de aplicar la velocidad del mod. 0 no exige un mínimo."),
+    field("recommendation_max_seconds", "Duración máxima (segundos)", 0, 0, 7200, 1, "Recomendaciones: duración y mods", "Se aplica a mapas locales y por descargar, en todas las etapas. 0 deja la duración sin límite."),
+    choice("recommendation_mods", "Mods de las recomendaciones", "profile", [
+        ("profile", "Mantener los mods del perfil"), ("free", "Libre: el coach elige"),
+        ("NM", "Forzar Sin mods"), ("HD", "Forzar Hidden (HD)"), ("HR", "Forzar Hard Rock (HR)"),
+        ("DT", "Forzar Double Time (DT · ×1,5)"), ("HT", "Forzar Half Time (HT · ×0,75)"),
+        ("HDHR", "Forzar HD + HR"), ("HDDT", "Forzar HD + DT (×1,5)"), ("HDHT", "Forzar HD + HT (×0,75)")],
+        "Libre compara Sin mods, HD, HR, DT, HT y combinaciones con HD. Cada misión fija sus mods y usa sus estrellas reales. Los cambios renuevan misiones sin intentos; las que empezaste conservan su objetivo."),
+
     field("reference_plays", "Partidas para calcular tu nivel", 100, 5, 2000, 1, "Memoria y calibración", "Máximo de partidas recientes que forman la referencia; el historial completo se conserva."),
     field("reference_days", "Antigüedad máxima de la referencia (días)", 30, 1, 365, 1, "Memoria y calibración", "Sólo entran resultados posteriores a la última recalibración y dentro de esta ventana."),
     field("session_plays", "Partidas para evaluar la sesión", 20, 3, 2000, 1, "Memoria y calibración", "Ventana corta que detecta cansancio o recuperación y ajusta la práctica del momento."),
@@ -72,6 +87,10 @@ def validate_settings(updates, base=None):
     result.update(updates)
     for key, spec in _FIELDS.items():
         value = result[key]
+        if spec["type"] == "choice":
+            if not isinstance(value, str) or value not in {item["value"] for item in spec["options"]}:
+                raise ValueError(spec["label"] + ": elegí una opción de la lista.")
+            continue
         if spec["type"] == "boolean":
             if type(value) is not bool:
                 raise ValueError(spec["label"] + ": elegí activado o desactivado.")
@@ -81,6 +100,8 @@ def validate_settings(updates, base=None):
                 or (spec["type"] == "integer" and int(value) != value)):
             raise ValueError(f"{spec['label']}: usá un valor entre {spec['min']:g} y {spec['max']:g}.")
         result[key] = int(value) if spec["type"] == "integer" else float(value)
+    if result["recommendation_max_seconds"] and result["recommendation_min_seconds"] > result["recommendation_max_seconds"]:
+        raise ValueError("La duración mínima no puede superar la duración máxima.")
     relations = [("session_plays", "reference_plays"), ("session_days", "reference_days"),
                  ("calibration_maps", "calibration_plays"), ("calibration_plays", "reference_plays"),
                  ("profile_min_maps", "profile_min_plays"), ("profile_min_sessions", "profile_min_plays"),

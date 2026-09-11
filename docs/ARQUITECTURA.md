@@ -95,3 +95,13 @@ El worker recibe contenido del mapa y ajustes de mods por entrada estándar. Dev
 El catálogo persiste su identificador de motor. Una caché de otra versión conserva identidades y rutas, pero suspende las estrellas anteriores hasta completar el escaneo. `quest_availability.difficulty` permite mostrar las estrellas actuales de la revisión exacta con los mods del perfil sin reescribir el mapa, los objetivos ni los intentos guardados en la misión. Una misión online puede vincularse por su identificador exacto al mapa importado. Los resultados y los hitos históricos no se recalculan.
 
 Los archivos del worker y los manifiestos npm se incluyen en el paquete Python; los binarios se instalan en `data/runtime/calculator/` y quedan fuera del repositorio. `OSU_COACH_CALCULATOR_DIR` permite ubicar ese entorno en otra carpeta. Para actualizar el algoritmo hay que cambiar la versión en el adaptador y en el manifiesto, regenerar el lockfile y verificar las pruebas en ambos sistemas.
+
+## Variantes de recomendaciones
+
+`core/mod_policy.py` define las combinaciones, sus condiciones exactas y los límites de duración. El modo inicial conserva el perfil. Libre y los presets obligatorios consultan `storage/variant_store.py`, que calcula en segundo plano y persiste por versión del motor, identidad de mapa, cliente, mods y velocidad. El catálogo sin mods conserva su propia caché.
+
+Para variantes online se descarga solo el archivo público `.osu`, con límite de tamaño, tiempo de espera y sin redirecciones. Las canciones y los paquetes `.osz` se importan desde osu!. La definición pública y sus cálculos vencen tras un día. Una consulta online amplia reúne candidatos; los filtros exactos se aplican después del cálculo, evitando estimar estrellas multiplicando la dificultad sin mods.
+
+Las misiones nuevas guardan `play_conditions` y `mods_label` junto con sus metas. La evaluación exige los mismos mods, sus ajustes y velocidad. Un intento nuevo de una misión activa, del mismo jugador, cliente y modo, puede guardar `coach_profile` para asociarse al entrenamiento que lo indicó. Ese campo no altera los mods de telemetría ni los resultados históricos. Las partidas manuales con otros mods siguen teniendo perfiles separados.
+
+El filtro de duración usa los segundos efectivos. El mínimo/máximo 0 deshabilita ese extremo. Una misión incompatible sin intentos se retira con `preferences_changed`; se conservan las misiones comenzadas, las que están en juego y las que esperan confirmación.

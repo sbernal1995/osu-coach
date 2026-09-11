@@ -98,6 +98,9 @@ def expectation_for(beatmap, profile, stage, tag_analysis=None):
     incomplete high accuracy can never be mistaken for a strong complete play.
     """
     window = profile.get("window") or []
+    if beatmap.get("play_conditions"):
+        from osu_coach.core.mod_policy import conditions_match
+        window = [play for play in window if conditions_match(beatmap["play_conditions"], play)]
     if stage in {"consolidation", "consolidate"} or (stage == "challenge" and not profile.get("challenge_unlocked")):
         stage = "consolidate"
     if stage not in {"warmup", "practice", "consolidate", "challenge"}:
@@ -178,7 +181,8 @@ def expectation_for(beatmap, profile, stage, tag_analysis=None):
     combo_min = math.ceil(map_combo * combo_rate) if map_combo > 0 else None
 
     latest = max(window, key=_time) if window else {}
-    client, mods = latest.get("client", "lazer"), latest.get("mods", [])
+    conditions = beatmap.get("play_conditions") or latest
+    client, mods = conditions.get("client", "lazer"), conditions.get("mods", [])
     grade = target_grade(client, accuracy, misses_max, mods)
     confidence = "provisional"
     if samples >= 3 and distinct_maps >= 2:

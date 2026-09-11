@@ -98,7 +98,7 @@ def _requirements(values):
             raise ValueError("Cada etapa debe indicar un rango de estrellas válido.")
         lower, upper = _range(item.get("min_stars"), item.get("max_stars"))
         requirement = {"min_stars": lower, "max_stars": upper}
-        for key in ("max_bpm", "max_ar", "max_length"):
+        for key in ("max_bpm", "max_ar", "max_length", "min_length"):
             if item.get(key) is not None:
                 value = _number(item[key])
                 if value is None or value <= 0:
@@ -111,6 +111,7 @@ def _requirements(values):
 def _eligible(item, excluded, requirements, excluded_songs=()):
     return item["id"] not in excluded and not song_tokens(item).intersection(excluded_songs) and (not requirements or any(
         requirement["min_stars"] <= item["stars"] <= requirement["max_stars"]
+        and ("min_length" not in requirement or item["length"] >= requirement["min_length"])
         and all(item[field] <= requirement[limit] for field, limit in (
             ("bpm", "max_bpm"), ("ar", "max_ar"), ("length", "max_length")) if limit in requirement)
         for requirement in requirements))

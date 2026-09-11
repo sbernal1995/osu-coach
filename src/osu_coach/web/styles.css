@@ -2459,7 +2459,8 @@ dialog p {
   color: #eee4f3;
   line-height: 1.6;
 }
-.settings-field input {
+.settings-field input,
+.settings-field select {
   width: 100%;
   min-width: 0;
   font: inherit;
@@ -2477,14 +2478,17 @@ dialog p {
   height: 21px;
   justify-self: end;
 }
-.settings-field input:focus-visible {
+.settings-field input:focus-visible,
+.settings-field select:focus-visible {
   outline: 3px solid var(--pink);
   outline-offset: 3px;
 }
-.settings-field input[aria-invalid="true"] {
+.settings-field input[aria-invalid="true"],
+.settings-field select[aria-invalid="true"] {
   border-color: var(--coral);
 }
-.settings-field input:disabled {
+.settings-field input:disabled,
+.settings-field select:disabled {
   opacity: 0.65;
 }
 .settings-field-description,

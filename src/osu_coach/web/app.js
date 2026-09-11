@@ -237,7 +237,7 @@ function renderSettingsHelp(state) {
       v("session_plays", 20) +
       " partidas de los últimos " +
       v("session_days", 7) +
-      " días. Cada perfil reúne el mismo jugador, cliente de osu! y combinación de mods, desde la última recalibración. Tu ranking y tus PP históricos quedan fuera del cálculo. El registro local conserva todas las partidas guardadas, aunque salgan de estas ventanas.",
+      " días. Cada perfil parte del mismo jugador, cliente de osu! y combinación de mods. Las partidas de misiones con mods recomendados se suman a la progresión que las propuso, guardando los mods usados. Tu ranking y tus PP históricos quedan fuera del cálculo. El registro local conserva todas las partidas guardadas, aunque salgan de estas ventanas.",
   );
   help(
     "help-calibration",
@@ -360,6 +360,7 @@ function setSettingsFeedback(message, kind = "info") {
   $("settings-feedback").dataset.state = kind;
 }
 function settingsInputValue(field) {
+  if (field.spec.type === "choice") return field.input.value;
   return field.spec.type === "boolean"
     ? field.input.checked
     : field.input.value.trim() === ""
@@ -405,7 +406,7 @@ function renderSettings(state) {
         (spec) =>
           spec &&
           typeof spec.key === "string" &&
-          ["integer", "number", "boolean"].includes(spec.type),
+          ["integer", "number", "boolean", "choice"].includes(spec.type),
       )
     : [];
   $("settings-section").hidden = !schema.length;
@@ -453,12 +454,19 @@ function renderSettings(state) {
         root.append(group);
       }
       const row = element("div", "settings-field");
-      const input = element("input");
+      if (spec.type === "choice") row.classList.add("settings-field-choice");
+      const input = element(spec.type === "choice" ? "select" : "input");
       const id = "setting-field-" + index;
       input.id = id;
       input.name = spec.key;
-      input.type = spec.type === "boolean" ? "checkbox" : "number";
-      if (spec.type !== "boolean") {
+      if (spec.type === "choice") {
+        (spec.options || []).forEach((option) => {
+          const entry = element("option", "", option.label);
+          entry.value = option.value;
+          input.append(entry);
+        });
+      } else input.type = spec.type === "boolean" ? "checkbox" : "number";
+      if (spec.type !== "boolean" && spec.type !== "choice") {
         input.required = true;
         input.inputMode = spec.type === "integer" ? "numeric" : "decimal";
         if (numeric(spec.min)) input.min = String(spec.min);
@@ -515,7 +523,10 @@ function readSettingsChanges() {
   settingsFields.forEach((field) => {
     const value = settingsInputValue(field);
     let message = "";
-    if (field.spec.type !== "boolean") {
+    if (field.spec.type === "choice") {
+      if (!(field.spec.options || []).some((option) => option.value === value))
+        message = "Elegí una opción.";
+    } else if (field.spec.type !== "boolean") {
       if (value === null || !Number.isFinite(value))
         message = "Ingresá un número.";
       else if (field.spec.type === "integer" && !Number.isInteger(value))
@@ -1524,7 +1535,7 @@ function renderTagAnalysis(state) {
         : "") +
       "Cada partida puede aportar a varios tipos de mapa. Comparamos resultados dentro de ±" +
       format(settingValue(state, "comparable_star_band", 0.5)) +
-      " ★ de tu referencia y con el mismo perfil de mods. Los tags describen el mapa; ubicar cada error requiere analizar la partida.",
+      " ★ de tu referencia dentro de este entrenamiento, incluidas las misiones con mods recomendados. Los tags describen el mapa; ubicar cada error requiere analizar la partida.",
   );
   items.forEach((item, index) => {
     const card = element("article", "tag-card");
@@ -1597,6 +1608,10 @@ function renderTagAnalysis(state) {
   );
 }
 function questCheckValue(check, value, target = false) {
+  if (check.key === "mods")
+    return typeof value === "string"
+      ? value
+      : "Mods distintos o no verificables";
   if (value === null || value === undefined || value === "")
     return "Falta dato";
   if (check.key === "complete" && typeof value === "boolean")
@@ -1657,6 +1672,13 @@ function questGoal(map, quest) {
     if (numeric(expected.combo_min))
       checks.push({ key: "combo", label: "Combo", target: expected.combo_min });
   }
+  if (map.play_conditions && !checks.some((check) => check.key === "mods"))
+    checks.unshift({
+      key: "mods",
+      label: "Mods y velocidad",
+      target: map.mods_label,
+      status: "pending",
+    });
   const list = element("ul", "quest-checks");
   const labels = {
     complete: "Completar el mapa",
@@ -1886,6 +1908,8 @@ function mapGoal(map, quest = null) {
   return goal;
 }
 function mapCard(map, quest = null, availability = null, automatic = false) {
+  if (!map.mods_label && availability?.mods_label)
+    map = { ...map, mods_label: availability.mods_label };
   if (numeric(availability?.difficulty?.stars)) {
     const updated = availability.difficulty.stars;
     const changed =
@@ -1981,6 +2005,12 @@ function mapCard(map, quest = null, availability = null, automatic = false) {
   const tags = mapTagChips(map.tags, map.tag_status);
   if (tags) card.append(tags);
   const stats = element("div", "map-stats");
+  if (map.mods_label) {
+    const badge = element("span", "map-mods", map.mods_label);
+    badge.title =
+      "Mods requeridos. Las estrellas y la duración incluyen su efecto.";
+    stats.append(badge);
+  }
   for (const [label, value] of [
     ["BPM", format(map.bpm)],
     ["Duración", duration(map.length)],
@@ -2322,7 +2352,13 @@ function renderDiscovery(state) {
     if (numeric(physical.max_bpm))
       meta.push("Hasta " + format(physical.max_bpm) + " BPM");
     if (numeric(physical.max_ar)) meta.push("AR ≤ " + format(physical.max_ar));
-    meta.push("Sin límite de duración");
+    if (numeric(physical.min_length))
+      meta.push("Duración ≥ " + duration(physical.min_length));
+    if (numeric(physical.max_length))
+      meta.push("Duración ≤ " + duration(physical.max_length));
+    if (!physical.min_length && !physical.max_length)
+      meta.push("Sin límite de duración");
+    else meta.push("Duración con los mods indicados");
   }
   const reserve = discovery.reserve || [];
   if (reserve.length)
@@ -2583,6 +2619,7 @@ function renderQuestSkips(state) {
           ? ({
               song_banned: "Canción excluida por vos",
               download_quality: "Ya no cumple los filtros de descarga",
+              preferences_changed: "Cambiaste los filtros de duración o mods",
             }[quest.skipped_reason] || "Dificultad ya jugada") +
               " · " +
               coachDate(quest.skipped_at)
@@ -3725,6 +3762,12 @@ function compactMapCard(card, map, quest) {
     .filter(Boolean)
     .join(" · ");
   const stats = element("div", "map-stats");
+  if (map.mods_label) {
+    const badge = element("span", "map-mods", map.mods_label);
+    badge.title =
+      "Mods requeridos. Las estrellas y la duración incluyen su efecto.";
+    stats.append(badge);
+  }
   const stars = element("span", "star-rating");
   stars.append(uiIcon("star"), document.createTextNode(format(map.stars)));
   stats.append(

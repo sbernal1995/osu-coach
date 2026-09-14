@@ -266,7 +266,7 @@ class QuestStore:
         return [{key: board.get(key) for key in ("id", "created_at", "archived_at", "completed_count", "total_count")}
                 for board in (self._summary(json.loads(row[0])) for row in rows)]
 
-    def record_play(self, scope, play):
+    def record_play(self, scope, play, allowed_missing=None):
         board = self.current(scope)
         if not board:
             return
@@ -275,7 +275,7 @@ class QuestStore:
             for quest in group["quests"]:
                 if quest["status"] not in {"pending", "in_progress"}:
                     continue
-                attempt = evaluate_attempt(quest, play)
+                attempt = evaluate_attempt(quest, play, allowed_missing=allowed_missing)
                 if attempt is None:
                     continue
                 inserted = self.db.execute("INSERT OR IGNORE INTO quest_attempts VALUES (?, ?, ?, ?)",

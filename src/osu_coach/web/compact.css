@@ -644,6 +644,10 @@ h3 {
 .quest-check-target {
   font-size: 12px;
 }
+.quest-grace-note,
+.quest-last-attempt {
+  font-size: 11px;
+}
 .goal-label {
   font-size: 10px;
   letter-spacing: 0.7px;

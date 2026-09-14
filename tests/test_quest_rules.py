@@ -225,5 +225,67 @@ class QuestCheckTests(unittest.TestCase):
         self.assertEqual(before, (task, attempt))
 
 
+class QuestGraceTests(unittest.TestCase):
+    def attempt(self, allowed_missing=0, **changes):
+        return evaluate_attempt(quest(), play(**changes), now=NOW, allowed_missing=allowed_missing)
+
+    def test_one_allowed_missing_accepts_a_single_unmet_goal(self):
+        result = self.attempt(1, misses=2)
+        self.assertTrue(result["completed"])
+        self.assertEqual(result["grace"], 1)
+        self.assertEqual(result["required"], 4)
+        self.assertEqual(result["required_total"], 5)
+        self.assertEqual(result["met"], 4)
+        self.assertEqual([check["status"] for check in result["checks"]],
+                         ["met", "met", "met", "unmet", "met"])
+        self.assertEqual(checks(result)["complete"]["status"], "met")
+
+    def test_grace_limit_is_exactly_allowed_missing(self):
+        self.assertFalse(self.attempt(1, misses=2, max_combo=50)["completed"])
+        result = self.attempt(2, misses=2, max_combo=50)
+        self.assertTrue(result["completed"])
+        self.assertEqual(result["met"], 3)
+        self.assertEqual(result["required"], 3)
+
+    def test_finishing_the_map_is_never_waived(self):
+        result = self.attempt(4, passed=False, completion=.5, grade="S", accuracy=99)
+        self.assertFalse(result["completed"])
+        self.assertEqual(checks(result)["complete"]["status"], "unmet")
+        self.assertGreaterEqual(result["met"], result["required"])
+
+    def test_default_stays_all_goals_strict(self):
+        result = self.attempt(misses=2)
+        self.assertFalse(result["completed"])
+        self.assertEqual(result["grace"], 0)
+        self.assertEqual(result["required"], 5)
+        self.assertEqual(result["required_total"], 5)
+
+    def test_unknown_measurement_can_be_the_waived_objective(self):
+        attempt = play()
+        del attempt["accuracy"]
+        result = evaluate_attempt(quest(), attempt, now=NOW, allowed_missing=1)
+        self.assertTrue(result["completed"])
+        self.assertEqual(checks(result)["accuracy"]["status"], "unknown")
+
+    def test_invalid_allowed_missing_values_fall_back_to_strict(self):
+        for bad in (None, "x", True, -5, float("nan")):
+            with self.subTest(bad=bad):
+                result = self.attempt(bad, misses=2)
+                self.assertFalse(result["completed"])
+                self.assertEqual(result["grace"], 0)
+
+    def test_single_check_mission_keeps_complete_as_the_only_bar(self):
+        task = quest()
+        task["map"]["expectation"] = {"complete_required": False, "grade_min": None, "combo_min": None}
+        for bad in (1, 3):
+            with self.subTest(bad=bad):
+                result = evaluate_attempt(task, play(passed=False), now=NOW, allowed_missing=bad)
+                self.assertFalse(result["completed"])
+                self.assertEqual(result["required"], 1)
+                result = evaluate_attempt(task, play(), now=NOW, allowed_missing=bad)
+                self.assertTrue(result["completed"])
+                self.assertEqual(result["required_total"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()

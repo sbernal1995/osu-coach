@@ -1657,6 +1657,8 @@ function questGoal(map, quest) {
     if (numeric(expected.combo_min))
       checks.push({ key: "combo", label: "Combo", target: expected.combo_min });
   }
+  const grace = Math.max(0, Number(settingValue(currentState, "quest_grace_checks", 0)) || 0);
+  const required = Math.max(1, checks.length - grace);
   const list = element("ul", "quest-checks");
   const labels = {
     complete: "Completar el mapa",
@@ -1691,7 +1693,10 @@ function questGoal(map, quest) {
     if (status !== "pending") {
       const result = {
         met: "Cumplido",
-        unmet: "Por alcanzar",
+        unmet:
+          grace > 0 && quest.status === "completed"
+            ? "Eximido por margen"
+            : "Por alcanzar",
         unknown: "No verificable",
       }[status];
       content.append(
@@ -1706,6 +1711,19 @@ function questGoal(map, quest) {
     list.append(item);
   });
   goal.append(list);
+  if (grace > 0 && checks.length > 1) {
+    goal.append(
+      element(
+        "p",
+        "quest-grace-note",
+        "Alcanza con cumplir " +
+          required +
+          " de " +
+          checks.length +
+          " objetivos, siempre que termines el mapa.",
+      ),
+    );
+  }
   if (!map.expectation && map.goal)
     goal.append(element("p", "goal-grade-note", map.goal));
   if (expected.grade_note)
@@ -1779,7 +1797,11 @@ function questGoal(map, quest) {
         "p",
         "quest-last-attempt",
         (played ? "Último intento: " + played + ". " : "") +
-          "Podés reintentar; la misma partida debe cumplir todos los requisitos.",
+          (grace > 0 && checks.length > 1
+            ? "Podés reintentar; la misma partida debe cumplir los " +
+              required +
+              " objetivos necesarios."
+            : "Podés reintentar; la misma partida debe cumplir todos los requisitos."),
       ),
     );
   } else {
@@ -2697,7 +2719,7 @@ function renderQuestOverview(state) {
     automatic
       ? !board
         ? emptyBoardNote
-        : "Cada partida nueva se verifica automáticamente. Cumplí todos los requisitos en el mismo intento; las otras misiones conservan sus metas." +
+        : "Cada partida nueva se verifica automáticamente. Cumplí los objetivos necesarios en el mismo intento; las otras misiones conservan sus metas." +
           (waiting
             ? " " +
               format(waiting) +
@@ -2716,7 +2738,7 @@ function renderQuestOverview(state) {
           ? "Esta tanda todavía tiene pocos mapas disponibles. Actualizá tu biblioteca y pedí una nueva tanda."
           : allCompleted
             ? "Completaste todas las misiones. Podés pedir una nueva tanda con tu perfil actual."
-            : "Cada partida nueva se verifica automáticamente. Cumplí todos los requisitos de una misión en el mismo intento.",
+            : "Cada partida nueva se verifica automáticamente. Cumplí los objetivos necesarios de una misión en el mismo intento.",
   );
   const skippedWaiting = Math.max(0, Number(board?.skipped_waiting_count) || 0);
   $("quest-selection-policy").hidden = !unplayed;

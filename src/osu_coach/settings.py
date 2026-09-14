@@ -43,6 +43,7 @@ SCHEMA = [
     field("challenge_maps", "Partidas distintas para habilitar el desafío", 3, 1, 20, 1, "Dificultad y progresión", "Las últimas partidas deben ser de dificultades distintas y cumplir precisión y misses."),
     field("challenge_accuracy", "Precisión mínima para el desafío (%)", 94.0, 80.0, 100.0, .5, "Dificultad y progresión", "Se comprueba en cada una de las últimas partidas necesarias."),
     field("challenge_miss_percent", "Máximo de misses para el desafío (%)", 2.0, 0.0, 10.0, .1, "Dificultad y progresión", "Porcentaje de misses sobre los objetos juzgados de cada partida."),
+    field("quest_grace_checks", "Objetivos con margen por misión", 0, 0, 3, 1, "Dificultad y progresión", "Cuántos objetivos pueden quedarse sin cumplir y aun así completar la misión, siempre que termines el mapa. 0 exige cumplirlos todos."),
     field("rank_step", "Paso entre rangos personales (estrellas)", .25, .05, 1.0, .05, "Rangos personales", "Los rangos ya ganados se conservan al cambiar el paso."),
     field("rank_required_maps", "Mapas distintos para ganar un rango", 3, 1, 30, 1, "Rangos personales", "Cambiar ajustes no otorga rangos; se evalúan al aceptar partidas nuevas."),
     field("strong_accuracy", "Precisión de un resultado sólido (%)", 97.0, 80.0, 100.0, .5, "Rangos personales", "Se usa para reconocer resultados sólidos y demostrar rangos."),

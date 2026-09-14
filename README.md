@@ -131,7 +131,7 @@ Las metas de las misiones que ya tenés asignadas permanecen fijas. Los criterio
 
 Podés empezar con un mapa de **Entrar en ritmo**, continuar con dos o tres de **Práctica principal** y cerrar con **Consolidar**. El desafío aparece cuando los resultados recientes cumplen las condiciones que indica el panel.
 
-Cada tarjeta explica la meta para ese mapa. Es un objetivo de entrenamiento, no una predicción del resultado. Para completar una misión, una misma partida nueva debe cumplir todos los requisitos y terminar el mapa. Si falta información, el coach deja esa comprobación pendiente.
+Cada tarjeta explica la meta para ese mapa. Es un objetivo de entrenamiento, no una predicción del resultado. Para completar una misión, una misma partida nueva debe cumplir todos los requisitos y terminar el mapa. Si falta información, el coach deja esa comprobación pendiente. En **Ajustes → Dificultad y progresión → Objetivos con margen por misión** podés permitir que hasta algunos objetivos queden sin cumplir y la misión se complete igual (siempre debés terminar el mapa); las tarjetas muestran cuántos de los objetivos son necesarios.
 
 **Copiar búsqueda** copia el ID de la dificultad cuando está disponible; pegalo en la búsqueda del juego. osu! [admite buscar mapas por ID](https://osu.ppy.sh/wiki/en/Beatmap_search). Las alternativas por título o mapper pueden devolver varios resultados: elegí la dificultad de la tarjeta.
 

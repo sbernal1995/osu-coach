@@ -82,12 +82,15 @@ def _base_grade(value):
     return {"SH": "S", "SSH": "SS"}.get(normalized, normalized)
 
 
-def evaluate_attempt(quest: dict, play: dict, *, now: datetime | None = None) -> dict | None:
+def evaluate_attempt(quest: dict, play: dict, *, now: datetime | None = None, allowed_missing: int = 0) -> dict | None:
     """Return checks for this attempt, or None when it cannot belong to a quest.
 
-Missing measurements stay unknown. Every included check must be met in this
-same play for ``completed`` to become true. A passed flag alone is insufficient
-without an explicit completion fraction of at least 0.98.
+    Missing measurements stay unknown. Finishing the map (the ``complete``
+    check) is always required; beyond it, ``allowed_missing`` objectives may
+    stay unfulfilled and the mission still count as completed (0 = all goals).
+    Every included check must be met in this same play for ``completed`` to
+    become true. A passed flag alone is insufficient without an explicit
+    completion fraction of at least 0.98.
 """
     if not isinstance(quest, dict) or not isinstance(play, dict):
         return None
@@ -145,5 +148,17 @@ without an explicit completion fraction of at least 0.98.
             met = actual <= target if maximum else actual >= target
             status = "met" if met else "unmet"
         checks.append({"key": key, "label": label, "target": target, "actual": actual, "status": status})
+
+    grace = 0
+    if not isinstance(allowed_missing, bool):
+        try:
+            grace = max(0, min(len(checks), int(allowed_missing)))
+        except (TypeError, ValueError, OverflowError):
+            grace = 0
+    # The complete check always stays first; finishing the map cannot be waived.
+    complete_met = bool(checks) and checks[0]["status"] == "met"
+    met = sum(check["status"] == "met" for check in checks)
+    required = max(1, len(checks) - grace)
     return {"play_id": play["id"], "played_at": play["played_at"],
-            "completed": all(check["status"] == "met" for check in checks), "checks": checks}
+            "completed": complete_met and met >= required, "checks": checks,
+            "required": required, "required_total": len(checks), "met": met, "grace": grace}

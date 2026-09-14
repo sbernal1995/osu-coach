@@ -149,7 +149,8 @@ class Coach:
                 inserted = self.db.execute("INSERT OR IGNORE INTO plays VALUES (?, ?, ?)",
                                           (play["id"], json.dumps(play, ensure_ascii=False), status)).rowcount
                 if inserted and status == "accepted":
-                    self.quest_store.record_play(scope_key(profile_key(play), self.config["since"]), play)
+                    self.quest_store.record_play(scope_key(profile_key(play), self.config["since"]), play,
+                                                 allowed_missing=self.settings.get("quest_grace_checks", 0))
                     self.sync_progress(profile_key(play), observed_id=play["id"])
             if inserted and status == "accepted":
                 self.active = profile_key(play)
@@ -192,7 +193,8 @@ class Coach:
             with self.db:
                 self.db.execute("UPDATE plays SET data=?, status=? WHERE id=?", (json.dumps(play), "accepted" if accept else "rejected", identifier))
                 if accept:
-                    self.quest_store.record_play(scope_key(profile_key(play), self.config["since"]), play)
+                    self.quest_store.record_play(scope_key(profile_key(play), self.config["since"]), play,
+                                                 allowed_missing=self.settings.get("quest_grace_checks", 0))
                     self.sync_progress(profile_key(play), observed_id=play["id"])
             if accept:
                 self.active = profile_key(play)

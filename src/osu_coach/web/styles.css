@@ -1677,6 +1677,12 @@ dialog p {
   margin-top: 12px;
   line-height: 1.7;
 }
+.quest-grace-note {
+  font-size: 10px;
+  color: #decaac;
+  margin-top: 10px;
+  line-height: 1.7;
+}
 .quest-stage-count {
   font-size: 10px;
   color: var(--muted);

@@ -534,6 +534,13 @@ main {
 #recommendations .compact-goal > span {
   display: inline;
 }
+#recommendations .compact-goal-target {
+  display: inline-block;
+}
+#recommendations .compact-goal-target[data-status="met"] {
+  color: var(--green);
+  font-weight: 600;
+}
 #recommendations .map-card > .map-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -711,9 +718,6 @@ main {
   font-size: 12px;
   fill: var(--text);
 }
-.training-sidebar .radar-guide {
-  display: none;
-}
 .training-sidebar .radar-grid {
   stroke: #65667a;
   stroke-width: 0.8;
@@ -723,8 +727,10 @@ main {
   stroke-width: 0.8;
 }
 .radar-reference {
-  fill: #55566e24;
-  stroke: none;
+  fill: #8e8fa718;
+  stroke: #a5a6bc;
+  stroke-width: 1.2;
+  stroke-dasharray: 4 3;
 }
 .training-sidebar .radar-fill {
   fill: #91eed829;
@@ -761,10 +767,12 @@ main {
   background: var(--green);
 }
 .legend-reference {
-  background: #55566e;
+  background: #8e8fa718;
+  border: 1px dashed #a5a6bc;
 }
 .training-sidebar .radar-caption {
-  font-size: 10px;
+  font-size: 11px;
+  line-height: 1.45;
   margin: 9px 0 0;
   color: #9192a8;
 }
@@ -1233,3 +1241,40 @@ main {
     animation: none !important;
   }
 }
+
+.map-stats .map-mods {
+  color: var(--pink);
+  font-weight: 600;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 1px 5px;
+  white-space: nowrap;
+}
+
+/* Focused practice and comparable progress, using the existing palette. */
+.training-role { color: var(--pink, #ff79ac); font-size: .72rem; margin: .3rem 0; }
+.practice-improvement { color: #8de7ce; font-size: .78rem; }
+.skill-evolution { margin: 1rem 0; padding: 1rem; border: 1px solid #353544; border-radius: 10px; }
+.skill-evolution > p, .skill-evolution details { color: #b9b6ca; font-size: .85rem; }
+.evolution-comparisons { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: .7rem; margin: .8rem 0; }
+.evolution-row { display: flex; flex-direction: column; gap: .35rem; border: 1px solid #353544; border-radius: 8px; padding: .8rem; }
+.evolution-row strong { overflow-wrap: anywhere; }
+.evolution-row small { color: #b9b6ca; }
+
+.coach-reference-heading {
+  margin: 24px 0 8px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 16px;
+}
+#coach-rank-goal h3 { font-size: 14px; margin: 14px 0 8px; }
+#coach-rank-goal li { margin: 8px 0; line-height: 1.5; }
+.coach-next-title { flex-wrap: wrap; gap: 8px 14px; }
+
+#training-level-panel { margin-bottom: 16px; }
+.training-level-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.training-level-head h3 { margin: 0; font-size: 16px; }
+#training-level-value, .training-credit { color: var(--green); }
+.training-credit { font-size: 11px; margin: 4px 0; }
+#training-level-counts { margin: 10px 0; }
+#training-level-evidence p { margin: 8px 0; font-size: 12px; }

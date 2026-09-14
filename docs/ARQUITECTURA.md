@@ -84,7 +84,7 @@ El servidor publica únicamente los cuatro recursos enumerados en `/assets/`. El
 
 La exclusión se aplica antes de seleccionar recomendaciones o reservas. Las misiones retiradas por gusto musical quedan en `quest_skips` con motivo `song_banned`, conservando intentos y resultados anteriores. Un mapa en juego o con confirmación pendiente espera para retirarse. Permitir una canción otra vez no modifica dificultades ya jugadas ni el registro de misiones retiradas.
 
-`DiscoveryStore` comparte la continuación entre las búsquedas por demanda, periódicas y manuales. El cursor del conector admite una cola de identificadores por verificar además de la posición en el catálogo. Así, el límite de ocho verificaciones por lote no descarta los conjuntos restantes. Las peticiones siguen acotadas y espaciadas. Los filtros de todas las etapas se envían al conector local y la reserva online se cuenta fuera de las canciones ya asignadas.
+`DiscoveryStore` comparte la continuación entre las búsquedas por demanda, periódicas y manuales. El cursor del conector admite una cola de identificadores por verificar además de la posición en el catálogo. Así, el límite de ocho verificaciones por lote no descarta los conjuntos restantes. La demanda recorre grupos configurables con `discovery_batches_per_pass` (10 inicialmente), con separación breve entre lotes y una pausa de `discovery_retry_minutes` al terminar el grupo. Cada lote persiste el cursor, el contador y el próximo intento; un evento despierta al planificador para recalcular las misiones y la reserva antes de continuar, incluso sin un navegador abierto. Una vez cubiertas, se respeta `discovery_interval_hours`. Agotamiento y errores mantienen sus esperas de una hora y 15 minutos. Los cambios de ajustes invalidan los resultados en vuelo. Las peticiones siguen acotadas y espaciadas. Los filtros de todas las etapas se envían al conector local y la reserva online se cuenta fuera de las canciones ya asignadas.
 
 ## Sensación de dificultad
 
@@ -103,3 +103,26 @@ El worker recibe contenido del mapa y ajustes de mods por entrada estándar. Dev
 El catálogo persiste su identificador de motor. Una caché de otra versión conserva identidades y rutas, pero suspende las estrellas anteriores hasta completar el escaneo. `quest_availability.difficulty` permite mostrar las estrellas actuales de la revisión exacta con los mods del perfil sin reescribir el mapa, los objetivos ni los intentos guardados en la misión. Una misión online puede vincularse por su identificador exacto al mapa importado. Los resultados y los hitos históricos no se recalculan.
 
 Los archivos del worker y los manifiestos npm se incluyen en el paquete Python; los binarios se instalan en `data/runtime/calculator/` y quedan fuera del repositorio. `OSU_COACH_CALCULATOR_DIR` permite ubicar ese entorno en otra carpeta. Para actualizar el algoritmo hay que cambiar la versión en el adaptador y en el manifiesto, regenerar el lockfile y verificar las pruebas en ambos sistemas.
+
+## Variantes de recomendaciones
+
+`core/mod_policy.py` define las combinaciones, sus condiciones exactas y los límites de duración. El modo inicial conserva el perfil. Libre y los presets obligatorios consultan `storage/variant_store.py`, que calcula en segundo plano y persiste por versión del motor, identidad de mapa, cliente, mods y velocidad. El catálogo sin mods conserva su propia caché.
+
+Para variantes online se descarga solo el archivo público `.osu`, con límite de tamaño, tiempo de espera y sin redirecciones. Las canciones y los paquetes `.osz` se importan desde osu!. La definición pública y sus cálculos vencen tras un día. Una consulta online amplia reúne candidatos; los filtros exactos se aplican después del cálculo, evitando estimar estrellas multiplicando la dificultad sin mods.
+
+Las misiones nuevas guardan `play_conditions` y `mods_label` junto con sus metas. La evaluación exige los mismos mods, sus ajustes y velocidad. Un intento nuevo de una misión activa, del mismo jugador, cliente y modo, puede guardar `coach_profile` para asociarse al entrenamiento que lo indicó. Ese campo no altera los mods de telemetría ni los resultados históricos. Las partidas manuales con otros mods siguen teniendo perfiles separados.
+
+El filtro de duración usa los segundos efectivos. El mínimo/máximo 0 deshabilita ese extremo. Una misión incompatible sin intentos se retira con `preferences_changed`; se conservan las misiones comenzadas, las que están en juego y las que esperan confirmación.
+
+### Práctica específica y evolución
+
+`core/training.py` concentra las referencias por habilidades, comparaciones de OD/mods, las repeticiones espaciadas y la separación entre objetivos obligatorios e indicadores. `expectations.py` conserva las estimaciones orientativas; `quest_rules.py` aplica `required_keys` cuando existe y mantiene la evaluación antigua para las misiones previas. `quest_store.py` guarda la referencia del primer intento completo y sus diferencias sin combinar intentos ni reescribir metas empezadas. La evolución se reconstruye del registro aceptado y filtrado por perfil/recalibración; no introduce otra fuente de puntuaciones.
+
+
+## Nivel de práctica persistente
+
+`storage/training_store.py` guarda `training_levels`, separado del historial de referencia y los rangos personales. La clave incluye jugador, cliente, mods y época de recalibración. Inicializa desde la referencia calibrada; no reconstruye subidas con victorias anteriores. Cada paso congela cantidad de mapas, sesiones y aumento; los ajustes nuevos rigen desde el siguiente paso.
+
+Las misiones nuevas incluyen un identificador de paso. Solo cuentan dificultades distintas completadas y marcadas como elegibles de práctica, consolidación o desafío, como máximo 0,15 ★ por debajo del nivel. Las metas elegibles requieren también control mínimo de precisión y misses. Calentamientos, benchmarks, dificultades demasiado bajas y misiones de otro paso no suman. Las sesiones se calculan sobre el registro completo aceptado; las partidas intermedias evitan separar artificialmente una sesión. Un resultado nunca se reutiliza entre pasos. La subida necesita un nuevo cumplimiento y se pospone en recuperación.
+
+`engine.recommend` usa el nivel guardado como centro de entrenamiento, conserva los ajustes relativos por habilidad y permite una reducción temporal en recuperación. La referencia observada y sus puntos permanecen intactos. La consistencia baja por sí sola ya no reduce la práctica. Al completar un paso se renuevan las misiones pendientes sin intentos; las empezadas conservan objetivos y su identificador anterior. La interfaz indica si una misión antigua ya no suma al paso actual.

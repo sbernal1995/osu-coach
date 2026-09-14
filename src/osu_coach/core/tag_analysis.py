@@ -185,6 +185,15 @@ def analyze_tags(plays, catalog, baseline, now=None):
     Out-of-band results remain visible but cannot create a strength or weakness.
     Summary rates are fractions; accuracy is a percentage from 0 to 100.
     """
+    from osu_coach.core.training import timing_comparable, conditions
+    from osu_coach.core.mod_policy import identity
+    from statistics import median
+    known_timing = [p for p in plays if _number(p.get('od')) is not None and conditions(p)]
+    timing_anchor = None
+    if known_timing:
+        common = Counter(identity(conditions(p)) for p in known_timing).most_common(1)[0][0]
+        matching = [p for p in known_timing if identity(conditions(p)) == common]
+        timing_anchor = {**matching[0], 'od': median(_number(p['od']) for p in matching)}
     base = _number(baseline, 0)
     assignments = session_ids(plays)
     now = _played_at({"played_at": now}) if now is not None else datetime.now(timezone.utc)
@@ -240,7 +249,7 @@ def analyze_tags(plays, catalog, baseline, now=None):
         for tag in tags:
             name = tag["name"]
             all_rows[name].append((key, play))
-            if lower <= _number(play["stars"]) <= upper:
+            if lower <= _number(play["stars"]) <= upper and (timing_anchor is None or timing_comparable(timing_anchor, play)):
                 comparable[name].append((key, play))
             if len(tags) > 1:
                 cooccurs.add(name)
@@ -280,8 +289,8 @@ def analyze_tags(plays, catalog, baseline, now=None):
             message = f"Resultados intermedios dentro de {scope}; reuní más partidas en mapas distintos."
         outside = len(rows) - len(current)
         if outside:
-            message += (" 1 partida fuera del rango queda fuera de la tendencia." if outside == 1
-                        else f" {outside} partidas fuera del rango quedan fuera de la tendencia.")
+            message += (" 1 partida fuera del rango o contexto comparable queda fuera de la tendencia." if outside == 1
+                        else f" {outside} partidas fuera del rango o contexto comparable quedan fuera de la tendencia.")
         if rows and not current:
             message += " Las cifras muestran esos resultados solo como referencia."
         severity = 0
@@ -328,7 +337,7 @@ def analyze_tags(plays, catalog, baseline, now=None):
         "evidence": {"days": get_setting('reference_days'), "max_plays": get_setting('reference_plays'), "min_plays": get_setting('profile_min_plays'), "min_maps": get_setting('profile_min_maps'),
                      "min_sessions": get_setting('profile_min_sessions'), "sessions": len(set(assignments.values())),
                      "comparable_sessions": _sessions([(key, play) for key, play, _ in selected
-                                                       if lower <= _number(play["stars"]) <= upper], assignments)},
+                                                       if lower <= _number(play["stars"]) <= upper and (timing_anchor is None or timing_comparable(timing_anchor, play))], assignments)},
         "method": (f"Hasta {get_setting('reference_plays')} partidas de los últimos {get_setting('reference_days')} días del perfil activo. Máximo {get_setting('max_attempts_per_map')} intentos por mapa. "
                    f"Media ponderada por recencia; cada mapa pesa según su intento más reciente, con semivida de {setting_text('half_life_days')} días. "
                    f"Tendencias desde {get_setting('profile_min_plays')} mediciones en {get_setting('profile_min_maps')} mapas y {get_setting('profile_min_sessions')} sesiones dentro de ±{setting_text('comparable_star_band')} ★ de tu referencia. "

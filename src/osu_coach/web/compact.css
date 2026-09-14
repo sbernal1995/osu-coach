@@ -308,9 +308,11 @@ h3 {
   fill: var(--text);
   font-size: 12px;
 }
-.radar-guide {
-  fill: var(--muted);
-  font-size: 10px;
+.radar-reading {
+  fill: var(--green);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 .radar-empty {
   padding: 16px 0;
@@ -974,7 +976,8 @@ th {
   border-radius: 6px;
   padding: 16px;
 }
-.settings-field input {
+.settings-field input,
+.settings-field select {
   min-height: 36px;
 }
 .settings-intro {
@@ -1706,4 +1709,8 @@ footer {
     flex-direction: column;
     gap: 0.4rem;
   }
+}
+
+.settings-field-choice {
+  grid-template-columns: minmax(0, 1fr);
 }

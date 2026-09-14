@@ -127,15 +127,28 @@ Por ejemplo, inicialmente la referencia considera hasta **100 partidas en 30 dí
 
 Las metas de las misiones que ya tenés asignadas permanecen fijas. Los criterios vigentes se aplican al preparar nuevas propuestas. Recalibrar establece un nuevo comienzo para estimar tu rendimiento; conserva las partidas guardadas y los rangos ganados.
 
+### Duración y mods
+
+En **Ajustes → Recomendaciones: duración y mods** podés configurar:
+
+- **Duración mínima y máxima**, en formato **mm:ss**. `00:00` deja ese extremo sin límite. Por ejemplo, `01:30` y `04:00` admiten mapas entre un minuto y medio y cuatro minutos. La duración es el tiempo jugable y refleja la velocidad del mod: DT ×1,5 acorta un mapa de 3 minutos a 2 minutos; HT ×0,75 lo lleva a 4 minutos.
+- **Mantener los mods del perfil**, el comportamiento inicial.
+- **Libre**, para comparar Sin mods, HD, HR, DT, HT, HD+HR, HD+DT y HD+HT.
+- **Forzar una combinación**, para que las nuevas misiones usen exclusivamente esa opción. DT y HT usan su velocidad estándar.
+
+Las tarjetas indican los mods requeridos. Las estrellas, BPM, AR, duración y combo se calculan con esas condiciones. Las metas usan evidencia de la misma combinación; si todavía no hay resultados, se presentan como provisionales. El primer cálculo de variantes de una biblioteca grande puede tardar unos minutos, funciona en segundo plano y se guarda para las próximas sesiones.
+
+Cambiar estos filtros renueva las misiones pendientes que dejaron de cumplirlos y que todavía no intentaste. Las misiones en práctica conservan sus condiciones, objetivos e intentos, aunque queden fuera del filtro nuevo. La exclusión de dificultades ya jugadas se mantiene: Libre no propone repetir un mismo mapa cambiándole los mods.
+
 ## Cómo usar las recomendaciones
 
-Podés empezar con un mapa de **Entrar en ritmo**, continuar con dos o tres de **Práctica principal** y cerrar con **Consolidar**. El desafío aparece cuando los resultados recientes cumplen las condiciones que indica el panel.
+Podés empezar con un mapa de **Entrar en ritmo**, continuar con dos o tres de **Práctica principal** y cerrar con **Consolidar**. El desafío aparece marcado dentro de Práctica principal cuando los resultados recientes cumplen las condiciones que indica el panel. Consolidar conserva su función de afianzar el control en mapas distintos.
 
-Cada tarjeta explica la meta para ese mapa. Es un objetivo de entrenamiento, no una predicción del resultado. Para completar una misión, una misma partida nueva debe cumplir todos los requisitos y terminar el mapa. Si falta información, el coach deja esa comprobación pendiente. En **Ajustes → Dificultad y progresión → Objetivos con margen por misión** podés permitir que hasta algunos objetivos queden sin cumplir y la misión se complete igual (siempre debés terminar el mapa); las tarjetas muestran cuántos de los objetivos son necesarios.
+Cada tarjeta distingue la meta principal de los indicadores orientativos: el grado y el combo no son requisitos universales. Los requisitos visibles cambian según la práctica; una misión de desafío puede admitir misses. Cada tarjeta explica la meta para ese mapa. Es un objetivo de entrenamiento, no una predicción del resultado. Para completar una misión, una misma partida nueva debe cumplir todos los requisitos y terminar el mapa. Si falta información, el coach deja esa comprobación pendiente.
 
 **Copiar búsqueda** copia el ID de la dificultad cuando está disponible; pegalo en la búsqueda del juego. osu! [admite buscar mapas por ID](https://osu.ppy.sh/wiki/en/Beatmap_search). Las alternativas por título o mapper pueden devolver varios resultados: elegí la dificultad de la tarjeta.
 
-Las nuevas misiones evitan dificultades exactas ya jugadas en ese perfil. Otras dificultades de la misma canción pueden seguir apareciendo. El perfil se separa por jugador, cliente y configuración de mods.
+Las nuevas misiones priorizan dificultades sin jugar. La excepción configurable es una **misión de referencia** activa como máximo: repite un mapa instalado, tras **7 días** desde su último intento, con la misma revisión, mods y OD comparable. Podés desactivarla o cambiar la espera en **Ajustes → Evolución y repeticiones**. Los baneos se respetan también en estas misiones. Otras dificultades de la misma canción pueden seguir apareciendo. El perfil se separa por jugador, cliente y configuración de mods. Las partidas que cumplen las condiciones de una misión con mods recomendados se vinculan a la progresión que propuso esa misión; se conservan los mods y las estrellas observados. Jugar una combinación distinta fuera de una misión mantiene su perfil separado.
 
 Si una canción no te gusta, abrí **Ver objetivos y detalles** de su misión y usá **No me gusta esta canción**. Se excluyen todas sus dificultades y otros sets con el mismo artista y título, incluidas las variantes romanizadas conocidas. La misión se reemplaza automáticamente cuando hay otra candidata. Si estás jugando ese mapa o falta confirmar su resultado, el reemplazo espera para conservar el intento. Podés deshacerlo en **Ajustes → Canciones excluidas**. El veto se guarda por jugador, persiste entre clientes, mods y recalibraciones, y conserva partidas y logros. Títulos de remixes o versiones distintos se tratan como canciones distintas.
 
@@ -145,13 +158,35 @@ Los tags describen tendencias observadas en mapas comparables. Una asociación c
 
 La referencia reciente puede subir o bajar. El rango personal ganado se conserva y exige demostrar resultados sólidos en varias dificultades distintas, según los criterios configurados.
 
+## Progresión por habilidad y evolución
+
+El perfil muestra referencias separadas para apuntado, pulsaciones/streams, control de dedos, lectura, técnica/sliders y resistencia. Se basan en etiquetas de habilidades reconocidas y resultados actuales; necesitan los mínimos configurados de partidas, mapas distintos y sesiones. Los tipos sin evidencia aparecen como **Por calibrar**. Una referencia respaldada ajusta el objetivo de mapas de ese tipo dentro del margen configurable de comparación; las etiquetas correlacionadas no suman incrementos.
+
+La memoria tiene tres funciones independientes:
+
+- **Sesión:** hasta 20 partidas / 7 días para ajustar la práctica del momento.
+- **Referencia actual:** hasta 100 partidas / 30 días, con recencia y límites por mapa, para estimar tu nivel actual.
+- **Evolución:** hasta 1.000 partidas / 90 días para comparar resultados equivalentes de sesiones distintas. Se muestra en **Progreso → Mejoras en condiciones comparables**.
+
+Todos estos valores se configuran. Las tres ventanas respetan la última recalibración; el registro completo y los rangos ganados se conservan. Los números son heurísticas del coach, no valores óptimos demostrados científicamente.
+
+Las comparaciones de evolución usan la primera y la última partida equivalentes de la ventana por dificultad, revisión y mods, con OD estable y estrellas comparables. Muestran por separado precisión, misses y combo, incluidos los retrocesos. Un intento incompleto no puede demostrar mejora de precisión. La precisión de otros mapas solo personaliza metas cuando hay OD cercano y los mismos mods; si se conocen los patrones, también deben ser compatibles.
+
+Las misiones guardan la referencia y sus objetivos al asignarse. La práctica de precisión puede pedir +0,5 puntos; una referencia con 10 misses puede pedir 8 con el paso predeterminado del 20 %. El paso de combo es de 5 puntos del combo máximo. Son pasos configurables. Las metas de misses/combo conservan un requisito explícito de precisión para pedir control, y todas exigen completar el mapa con los mods indicados. Los intentos guardan mejoras respecto de su referencia incluso antes de completar la misión.
+
+Al actualizar, las misiones sin intentos pueden renovarse con estas reglas. Las misiones que ya empezaste conservan sus metas. La progresión reconoce mejora específica sin conceder automáticamente un rango: los ascensos siguen exigiendo resultados sólidos en mapas distintos.
+
+El diseño toma como orientación la [guía de consistencia de Almost](https://osu.ppy.sh/community/forums/topics/1542959), los [objetivos pequeños y medibles de ferret](https://www.reddit.com/r/osugame/comments/1qwl2le/8_real_tips_to_get_good_from_a_top_20_player/) y el [marco de dificultad de práctica de Guadagnoli y Lee](https://pubmed.ncbi.nlm.nih.gov/15130871/). Las guías recogen experiencia de jugadores y el marco científico no valida estos umbrales específicos para osu!.
+
 ## Mapas por descargar
 
-El coach busca canciones **antiguas y recientes**: nuevas para tus recomendaciones no significa recién publicadas. La [búsqueda pública de osu! sin iniciar sesión](https://github.com/ppy/osu-web/blob/master/app/Libraries/Search/BeatmapsetSearchRequestParams.php) ordena por fecha de clasificación y limita los filtros disponibles. Por eso el coach recorre páginas hacia mapas más antiguos y aplica localmente tus límites de estrellas, AR y BPM, junto con tus exclusiones. La duración no excluye mapas ni modifica tu dificultad de referencia. En «Entrar en ritmo» se da una preferencia suave a los mapas de hasta 150 segundos, configurable en Ajustes (0 la desactiva); práctica y consolidación admiten cualquier duración. Los antiguos ajustes de factor y margen de duración se retiran automáticamente al actualizar, conservando las demás preferencias.
+El coach busca canciones **antiguas y recientes**: nuevas para tus recomendaciones no significa recién publicadas. La [búsqueda pública de osu! sin iniciar sesión](https://github.com/ppy/osu-web/blob/master/app/Libraries/Search/BeatmapsetSearchRequestParams.php) ordena por fecha de clasificación y limita los filtros disponibles. Por eso el coach recorre páginas hacia mapas más antiguos y aplica localmente tus límites de estrellas y AR, junto con tus exclusiones. El **BPM deja de ser un filtro estricto por defecto**: el tempo no describe la cantidad de pulsaciones ni los patrones. Podés activar el límite antiguo en Ajustes. La densidad de inicios de notas, cuando está disponible, aporta una preferencia suave a la selección. La duración solo excluye mapas si configurás un mínimo o un máximo; no modifica tu dificultad de referencia. En «Entrar en ritmo» se da una preferencia suave a los mapas de hasta 02:30, configurable en Ajustes (00:00 la desactiva); todas las etapas respetan los límites de duración que elijas. Los antiguos ajustes de factor y margen de duración se retiran automáticamente al actualizar, conservando las demás preferencias.
 
 La pantalla mantiene hasta **9 misiones** y prepara una **reserva de 6 canciones online por etapa** fuera de las misiones actuales. La reserva evita que la búsqueda se detenga apenas se llena el tablero. Podés configurar su tamaño en **Ajustes → Mapas para descargar**, o ponerlo en 0 para buscar solo cuando falten misiones. Los filtros y los conteos de reserva aparecen en **Filtros y frecuencia de búsqueda**.
 
-Cada lote lee hasta tres páginas y verifica hasta ocho conjuntos. Los conjuntos que quedan pendientes se guardan para el siguiente lote. Las búsquedas automáticas, periódicas y manuales conservan el punto de continuación, incluso al cerrar el coach. Un lote vacío no termina el recorrido. Cambiar de perfil o ampliar sustancialmente los filtros puede reiniciarlo para revisar mapas antes descartados.
+Cuando faltan misiones o reserva, el coach recorre **hasta 10 lotes seguidos**, recalculando lo que falta después de cada lote. Se detiene antes si ya hay suficientes opciones. Si todavía faltan, espera **1 minuto** y continúa con otro grupo; cuando completa las opciones, vuelve a la revisión habitual de **24 horas**. La cantidad de lotes, la pausa entre grupos y la frecuencia habitual se configuran en **Ajustes → Mapas para descargar**. Funciona con el panel cerrado mientras el servicio del coach siga abierto.
+
+Cada lote lee hasta tres páginas y verifica hasta ocho conjuntos. Las consultas individuales mantienen una separación mínima de 1,1 segundos. Los conjuntos que quedan pendientes se guardan para el siguiente lote. El panel muestra el lote actual, la continuación y las pausas. Al llegar al final de la fuente consultada se espera una hora; ante un error de red, 15 minutos. Las búsquedas automáticas, periódicas y manuales conservan el punto de continuación, incluso al cerrar el coach. Un lote vacío no termina el recorrido. Cambiar de perfil o ampliar sustancialmente los filtros puede reiniciarlo para revisar mapas antes descartados.
 
 Con la configuración inicial, un conjunto descargable necesita cumplir **a la vez**:
 
@@ -161,7 +196,7 @@ Con la configuración inicial, un conjunto descargable necesita cumplir **a la v
 
 Los favoritos se muestran como información adicional y no sustituyen esos requisitos. Los umbrales se pueden consultar y ajustar en **Configuración**. Los datos de valoración y reproducciones pertenecen al conjunto de dificultades; no prueban la calidad específica de cada dificultad.
 
-El botón **Ver / descargar** abre osu!. La descarga e importación se realizan desde el juego o el sitio oficial. La búsqueda online se pausa para perfiles con mods o velocidad alterada cuando no hay estrellas comparables.
+El botón **Ver / descargar** abre osu!. La descarga e importación se realizan desde el juego o el sitio oficial. En modo Libre o al forzar un mod, se obtiene el archivo público de definición de la dificultad para calcular sus estrellas antes de recomendarla. Esto no descarga la canción ni importa el mapa al juego. Si mantenés los mods del perfil y no hay estrellas online comparables, la búsqueda se pausa.
 
 La fuente pública tiene cobertura limitada y puede cambiar de formato. El panel informa los errores y conserva los candidatos válidos guardados.
 
@@ -180,7 +215,7 @@ Las consultas públicas de mapas y tags envían identificadores públicos de con
 - Si falta una fecha verificable, el panel puede pedirte confirmar el intento. Las transiciones muy rápidas pueden perderse entre lecturas.
 - El grado de stable depende también de los juicios; la precisión por sí sola no permite prometer una S. Los datos ausentes permanecen pendientes.
 - El catálogo utiliza una versión fijada del cálculo de osu!lazer. Al actualizar ese motor, se descarta la caché de estrellas anterior y se recalcula la biblioteca. Las misiones conservan sus objetivos; las tarjetas muestran las estrellas actualizadas de la misma dificultad. Las partidas y los ascensos ya registrados se conservan. Una versión futura del juego puede volver a cambiar la fórmula.
-- Las dificultades aún no descargadas usan las estrellas publicadas por osu!; al importarlas se calculan localmente. La dificultad con mods se calcula cuando sus ajustes son compatibles y están disponibles.
+- Las dificultades aún no descargadas usan las estrellas publicadas por osu!; al importarlas se calculan localmente. Las variantes con mods solo se recomiendan después de calcularlas. Una variante que no pudo calcularse queda fuera hasta reintentarse.
 - Los criterios son heurísticas de práctica; todavía no constituyen un método de entrenamiento validado.
 
 ## Problemas frecuentes
@@ -234,3 +269,12 @@ node --test tests/test_web_ui.mjs
 ```
 
 Node.js ejecuta tanto estas pruebas como el motor local de dificultad. Después de preparar el motor, el cálculo de estrellas funciona sin conexión.
+
+
+### Subir la dificultad entrenando
+
+El **nivel de práctica** empieza en tu referencia calibrada y aumenta, por defecto, **0,10 ★ por cada tres dificultades distintas completadas en al menos dos sesiones**. Buscá la etiqueta **Cuenta para subir práctica** y cumplí todos los objetivos de esa misión. No hace falta completar las nueve misiones del tablero juntas.
+
+El calentamiento y las repeticiones de referencia no suman subidas. El nivel ganado se conserva aunque juegues mapas fáciles; una sesión difícil puede bajar temporalmente las recomendaciones. La falta de consistencia por sí sola mantiene la dificultad y cambia el foco de práctica. En Progreso podés ver el paso actual, los resultados que cuentan y las subidas anteriores.
+
+En Ajustes → Progresión del entrenamiento podés activar la progresión y configurar el aumento, las dificultades y las sesiones necesarias. Cada paso conserva las reglas con las que empezó; los cambios se aplican al siguiente. Recalibrar inicia una nueva progresión de práctica y conserva los rangos personales ya ganados. Las misiones completadas antes de activar este sistema no otorgan subidas retroactivas.

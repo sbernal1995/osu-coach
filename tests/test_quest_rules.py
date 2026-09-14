@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 import unittest
 
 from osu_coach.core.quest_rules import evaluate_attempt
+from osu_coach.core.mod_policy import context as mod_context
 
 
 NOW = datetime(2026, 9, 9, 10, 0, tzinfo=timezone.utc)
@@ -285,6 +286,50 @@ class QuestGraceTests(unittest.TestCase):
                 result = evaluate_attempt(task, play(), now=NOW, allowed_missing=bad)
                 self.assertTrue(result["completed"])
                 self.assertEqual(result["required_total"], 1)
+
+    def test_plan_required_keys_waive_optional_goals_without_grace(self):
+        task = quest()
+        task["map"]["expectation"]["required_keys"] = ["accuracy"]
+        result = evaluate_attempt(task, play(grade="B", misses=5, max_combo=10), now=NOW)
+        self.assertTrue(result["completed"])
+        self.assertEqual(result["required_total"], 2)
+        self.assertEqual(result["required"], 2)
+        self.assertEqual(result["met"], 2)
+        self.assertEqual(checks(result)["complete"]["required"], True)
+        self.assertEqual(checks(result)["accuracy"]["required"], True)
+        self.assertEqual(checks(result)["grade"]["required"], False)
+        self.assertEqual(checks(result)["misses"]["status"], "unmet")
+
+    def test_grace_waives_plan_required_goals_up_to_the_setting(self):
+        task = quest()
+        task["map"]["expectation"].update(required_keys=["accuracy", "misses"], misses_max=0)
+        result = evaluate_attempt(task, play(misses=3), now=NOW, allowed_missing=1)
+        self.assertTrue(result["completed"])
+        self.assertEqual(result["required"], 2)
+        self.assertEqual(result["met"], 2)
+        beyond = evaluate_attempt(task, play(misses=3, accuracy=95), now=NOW, allowed_missing=1)
+        self.assertFalse(beyond["completed"])
+        self.assertEqual(beyond["met"], 1)
+
+    def test_prescribed_mods_are_never_waived_by_grace(self):
+        task = quest()
+        task["map"]["play_conditions"] = mod_context("HD")
+        wrong = play(misses=0)
+        result = evaluate_attempt(task, wrong, now=NOW, allowed_missing=4)
+        self.assertFalse(result["completed"])
+        self.assertEqual(result["checks"][0]["key"], "mods")
+        self.assertEqual(result["checks"][0]["status"], "unmet")
+        self.assertEqual(result["checks"][0]["actual"], "Sin mods")
+        exact = play(mods=[{"acronym": "HD"}], mod_key='{"mods":[{"acronym":"HD"}],"rate":1}')
+        self.assertTrue(evaluate_attempt(task, exact, now=NOW, allowed_missing=0)["completed"])
+
+    def test_mods_and_finished_play_remain_mandatory_when_plan_narrows_goals(self):
+        task = quest()
+        task["map"]["expectation"]["required_keys"] = ["accuracy"]
+        for changes in ({"passed": False}, {"completion": .5}):
+            with self.subTest(changes=changes):
+                self.assertFalse(evaluate_attempt(task, play(accuracy=97, **changes), now=NOW,
+                                                  allowed_missing=3)["completed"])
 
 
 if __name__ == "__main__":

@@ -131,9 +131,9 @@ class QuestIntegrationTests(unittest.TestCase):
     def test_distinct_partial_attempts_cannot_combine_into_a_completion(self):
         quest = self.first_quest(self.initial_board())
         goal = quest["map"]["expectation"]
-        self.coach.add_play(self.attempt(quest, misses=goal["misses_max"] + 1))
+        self.coach.add_play(self.attempt(quest, passed=False))
         self.coach.add_play(self.attempt(quest, accuracy=goal["accuracy_min"] - 1))
-        self.coach.add_play(self.attempt(quest, max_combo=goal["combo_min"] - 1))
+        self.coach.add_play(self.attempt(quest, completion=.5))
         current = self.current_quest(quest["id"])
         self.assertEqual("in_progress", current["status"])
         self.assertEqual(3, current["attempt_count"])
@@ -142,9 +142,9 @@ class QuestIntegrationTests(unittest.TestCase):
         self.assertEqual("completed", current["status"])
         self.assertEqual(4, current["attempt_count"])
 
-    def test_explicit_low_grade_and_failed_or_partial_results_do_not_complete(self):
+    def test_missed_primary_goal_and_failed_or_partial_results_do_not_complete(self):
         quest = self.first_quest(self.initial_board())
-        for fields in ({"grade": "D"}, {"passed": False, "grade": "F"}, {"completion": .5}):
+        for fields in ({"accuracy": quest["map"]["expectation"]["accuracy_min"] - 1}, {"passed": False, "grade": "F"}, {"completion": .5}):
             with self.subTest(fields=fields):
                 self.coach.add_play(self.attempt(quest, **fields))
                 self.assertNotEqual("completed", self.current_quest(quest["id"])["status"])

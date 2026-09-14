@@ -4,6 +4,7 @@ from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 import tempfile
 import unittest
+from osu_coach.settings import settings_context
 from unittest.mock import Mock
 
 from osu_coach.app import Coach, DEFAULT_MOD_KEY
@@ -41,6 +42,7 @@ class AutomaticDiscoveryTests(unittest.TestCase):
     def quests(state):
         return [q for g in state["quest_board"]["groups"] for q in g["quests"]]
 
+    @settings_context({"bpm_hard_limit": True})
     def test_empty_stages_start_search_despite_daily_cache_and_refill_on_arrival(self):
         before = self.coach.state()
         self.assertEqual([3, 0, 0], [len(g["quests"]) for g in before["quest_board"]["groups"]])
@@ -66,7 +68,7 @@ class AutomaticDiscoveryTests(unittest.TestCase):
         self.assertTrue({1, 2, 3, *range(9000, 9005)} <= set(args["exclude_ids"]))
         self.assertEqual(3, len(args["requirements"]))  # Explore every stage, even while only two have gaps.
         for requirement in args["requirements"]:
-            self.assertEqual(165, requirement["max_bpm"])
+            self.assertIsNone(requirement["max_bpm"])
             self.assertEqual(8.7, requirement["max_ar"])
             self.assertNotIn("max_length", requirement)
 

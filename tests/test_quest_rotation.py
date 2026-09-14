@@ -167,7 +167,7 @@ class QuestRotationTests(unittest.TestCase):
     def test_no_alternative_keeps_completed_visible_until_catalog_gains_a_valid_map(self):
         old = self.quests(self.initial)[0]
         self.coach.catalog = [deepcopy(quest["map"]) for quest in self.quests(self.initial)]
-        for index, unsuitable in enumerate(({"stars": 9}, {"bpm": 300}, {"ar": 11},
+        for index, unsuitable in enumerate(({"stars": 9}, {"bpm": 300, "ar": 11}, {"ar": 11},
                                             {"id": old["map"]["id"]},
                                             {"key": old["map"]["key"], "id": 0,
                                              "title": old["map"]["title"].upper()})):

@@ -237,7 +237,7 @@ function renderSettingsHelp(state) {
       v("session_plays", 20) +
       " partidas de los últimos " +
       v("session_days", 7) +
-      " días. Cada perfil reúne el mismo jugador, cliente de osu! y combinación de mods, desde la última recalibración. Tu ranking y tus PP históricos quedan fuera del cálculo. El registro local conserva todas las partidas guardadas, aunque salgan de estas ventanas.",
+      " días. Cada perfil parte del mismo jugador, cliente de osu! y combinación de mods. Las partidas de misiones con mods recomendados se suman a la progresión que las propuso, guardando los mods usados. Tu ranking y tus PP históricos quedan fuera del cálculo. El registro local conserva todas las partidas guardadas, aunque salgan de estas ventanas.",
   );
   help(
     "help-calibration",
@@ -256,8 +256,8 @@ function renderSettingsHelp(state) {
   );
   help(
     "help-rank",
-    "Tu rango personal",
-    "El rango ganado registra lo que pudiste consolidar y se conserva al recalibrar o al bajar tu forma reciente. Avanza en pasos de " +
+    "Máximo rango demostrado",
+    "Registra los resultados sólidos que alcanzaste y se conserva al recalibrar o al bajar tu forma reciente. Avanza en pasos de " +
       v("rank_step", 0.25) +
       " ★ al reunir resultados sólidos en " +
       v("rank_required_maps", 3) +
@@ -265,7 +265,7 @@ function renderSettingsHelp(state) {
       memory +
       ": mapas completados con " +
       strong +
-      ". La próxima práctica sigue tu referencia actual. Cambiar los ajustes conserva tus rangos; los próximos ascensos se evalúan al aceptar partidas nuevas. El gráfico conserva la etapa desde la última calibración y separa los cambios de cálculo o de ajustes.",
+      ". La práctica usa el nivel ganado cuando la progresión está activa; en caso contrario, usa la referencia reciente. Cambiar los ajustes conserva tus rangos; los próximos ascensos se evalúan al aceptar partidas nuevas. El gráfico conserva la etapa desde la última calibración y separa los cambios de cálculo o de ajustes.",
   );
   help(
     "help-profile",
@@ -276,7 +276,7 @@ function renderSettingsHelp(state) {
       v("session_gap_minutes", 60) +
       " minutos o más separa sesiones. La evidencia usa hasta " +
       memory +
-      ", con más peso para las recientes. Al consolidar o recuperar control, el perfil puede reducir la exigencia de práctica; la recuperación pausa el desafío. Si la sesión pide una reducción mayor, se usa esa reducción. El desafío habilitado apunta a +" +
+      ", con más peso para las recientes. Al consolidar se mantiene la dificultad y se ajustan los objetivos. Una sesión difícil puede reducir temporalmente la práctica y pausar el desafío. Si la sesión pide una reducción mayor, se usa esa reducción. El desafío habilitado apunta a +" +
       v("consolidate_increment", 0.1) +
       " ★ al consolidar o +" +
       v("challenge_increment", 0.15) +
@@ -301,7 +301,7 @@ function renderSettingsHelp(state) {
   help(
     "help-challenge",
     "Consolidar y probar un desafío",
-    "Consolidar propone otra dificultad cerca de tu referencia para repetir un resultado controlado. Una vez calibrado, el pequeño desafío se habilita cuando tus últimas " +
+    "Consolidar mantiene mapas controlables y variados. El desafío aparece marcado dentro de Práctica principal, con una meta concreta que admite misses. Una vez calibrado, se habilita cuando tus últimas " +
       v("challenge_maps", 3) +
       " partidas son en " +
       v("challenge_maps", 3) +
@@ -311,6 +311,7 @@ function renderSettingsHelp(state) {
       v("challenge_miss_percent", 2) +
       " % de misses, siempre que el perfil permita salir de recuperación. Probalo si la práctica principal salió cómoda. El tipo de mapa prioritario orienta la selección de práctica cuando hay evidencia suficiente.",
   );
+  $("help-challenge").append(document.createTextNode(" La misión exige completar y alcanzar la meta principal con el control indicado. El grado y el combo pueden ser orientativos. Las referencias repetidas esperan " + v("benchmark_cooldown_days", 7) + " días, con un máximo de una activa; se pueden desactivar en Ajustes. La evolución compara hasta " + v("trend_plays", 1000) + " partidas de " + v("trend_days", 90) + " días en condiciones equivalentes. El BPM no es un límite estricto salvo que lo actives."));
   help(
     "help-tags",
     "Tipos de mapa",
@@ -326,9 +327,11 @@ function renderSettingsHelp(state) {
   );
   const enabled = settingValue(state, "discovery_enabled", true);
   const introduction = enabled
-    ? "Cuando faltan dificultades adecuadas, el coach busca automáticamente y agrega nuevas misiones sin cambiar las que ya tenés. Revisa nuevos lotes cada " +
+    ? "Cuando faltan misiones o reserva, el coach recorre hasta " +
+      v("discovery_batches_per_pass", 10) +
+      " lotes seguidos y comprueba después de cada uno si ya hay suficientes opciones. Si todavía faltan mapas, hace una pausa de " +
       v("discovery_retry_minutes", 1) +
-      " minutos mientras falten opciones; el panel muestra la próxima búsqueda si necesita esperar. También revisa novedades cada " +
+      " minutos y continúa desde donde quedó. Al completar las opciones, revisa novedades cada " +
       v("discovery_interval_hours", 24) +
       " horas mientras está abierto y conserva los resultados para la próxima sesión. "
     : "La búsqueda automática está desactivada en Configuración. Podés activarla para que el coach busque opciones cuando falten dificultades adecuadas. ";
@@ -359,7 +362,21 @@ function setSettingsFeedback(message, kind = "info") {
   text("settings-feedback", message);
   $("settings-feedback").dataset.state = kind;
 }
+// Duration settings are stored in seconds; the form displays and accepts mm:ss.
+function isDurationSetting(spec) {
+  return spec.type === "integer" && spec.key.endsWith("_seconds");
+}
+function settingsDuration(value) {
+  return duration(value).padStart(5, "0");
+}
 function settingsInputValue(field) {
+  if (isDurationSetting(field.spec)) {
+    const match = /^(\d+):([0-5]\d)$/.exec(field.input.value.trim());
+    if (!match) return null;
+    const seconds = Number(match[1]) * 60 + Number(match[2]);
+    return Number.isSafeInteger(seconds) ? seconds : null;
+  }
+  if (field.spec.type === "choice") return field.input.value;
   return field.spec.type === "boolean"
     ? field.input.checked
     : field.input.value.trim() === ""
@@ -389,6 +406,8 @@ function applySettingsValues(settings) {
       settings?.defaults?.[field.spec.key] ??
       field.spec.default;
     if (field.spec.type === "boolean") field.input.checked = Boolean(value);
+    else if (isDurationSetting(field.spec))
+      field.input.value = settingsDuration(value);
     else
       field.input.value =
         value === undefined || value === null ? "" : String(value);
@@ -405,7 +424,7 @@ function renderSettings(state) {
         (spec) =>
           spec &&
           typeof spec.key === "string" &&
-          ["integer", "number", "boolean"].includes(spec.type),
+          ["integer", "number", "boolean", "choice"].includes(spec.type),
       )
     : [];
   $("settings-section").hidden = !schema.length;
@@ -453,12 +472,33 @@ function renderSettings(state) {
         root.append(group);
       }
       const row = element("div", "settings-field");
-      const input = element("input");
+      if (spec.type === "choice") row.classList.add("settings-field-choice");
+      const input = element(spec.type === "choice" ? "select" : "input");
       const id = "setting-field-" + index;
       input.id = id;
       input.name = spec.key;
-      input.type = spec.type === "boolean" ? "checkbox" : "number";
-      if (spec.type !== "boolean") {
+      if (spec.type === "choice") {
+        (spec.options || []).forEach((option) => {
+          const entry = element("option", "", option.label);
+          entry.value = option.value;
+          input.append(entry);
+        });
+      } else if (isDurationSetting(spec)) {
+        input.type = "text";
+        input.required = true;
+        input.placeholder = "mm:ss";
+        input.autocomplete = "off";
+        input.spellcheck = false;
+        input.addEventListener("blur", () => {
+          const value = settingsInputValue({ spec, input });
+          if (value !== null) input.value = settingsDuration(value);
+        });
+      } else input.type = spec.type === "boolean" ? "checkbox" : "number";
+      if (
+        spec.type !== "boolean" &&
+        spec.type !== "choice" &&
+        !isDurationSetting(spec)
+      ) {
         input.required = true;
         input.inputMode = spec.type === "integer" ? "numeric" : "decimal";
         if (numeric(spec.min)) input.min = String(spec.min);
@@ -469,18 +509,32 @@ function renderSettings(state) {
             ? "1"
             : "any";
       }
-      const label = element("label", "", spec.label || spec.key);
+      const label = element(
+        "label",
+        "",
+        isDurationSetting(spec)
+          ? (spec.label || spec.key).replace("(segundos)", "(mm:ss)")
+          : spec.label || spec.key,
+      );
       label.htmlFor = id;
+      const displayValue = isDurationSetting(spec) ? settingsDuration : format;
       const bounds =
         spec.type === "boolean"
           ? ""
           : numeric(spec.min) && numeric(spec.max)
-            ? " Valores de " + format(spec.min) + " a " + format(spec.max) + "."
+            ? " Valores de " +
+              displayValue(spec.min) +
+              " a " +
+              displayValue(spec.max) +
+              "."
             : "";
       const description = element(
         "p",
         "settings-field-description",
-        (spec.description || "") + bounds,
+        (isDurationSetting(spec)
+          ? (spec.description || "").replace(/\b0\b/g, "00:00") +
+            " Ingresá minutos y segundos, por ejemplo 02:30."
+          : spec.description || "") + bounds,
       );
       description.id = id + "-description";
       const error = element("p", "settings-field-error");
@@ -515,7 +569,24 @@ function readSettingsChanges() {
   settingsFields.forEach((field) => {
     const value = settingsInputValue(field);
     let message = "";
-    if (field.spec.type !== "boolean") {
+    if (field.spec.type === "choice") {
+      if (!(field.spec.options || []).some((option) => option.value === value))
+        message = "Elegí una opción.";
+    } else if (isDurationSetting(field.spec)) {
+      if (value === null)
+        message = "Usá mm:ss, por ejemplo 02:30. Los segundos van de 00 a 59.";
+      else if (value < field.spec.min)
+        message = "El mínimo es " + settingsDuration(field.spec.min) + ".";
+      else if (value > field.spec.max)
+        message = "El máximo es " + settingsDuration(field.spec.max) + ".";
+      else if (
+        numeric(field.spec.step) &&
+        field.spec.step > 0 &&
+        (value - field.spec.min) % field.spec.step !== 0
+      )
+        message =
+          "Usá incrementos de " + settingsDuration(field.spec.step) + ".";
+    } else if (field.spec.type !== "boolean") {
       if (value === null || !Number.isFinite(value))
         message = "Ingresá un número.";
       else if (field.spec.type === "integer" && !Number.isInteger(value))
@@ -931,7 +1002,23 @@ function renderCoachChart(progress) {
         : "Cada punto muestra una referencia calibrada al registrar un resultado."),
   );
 }
+function renderTrainingLevel(state) {
+  const level = state.profile?.training_level;
+  $("training-level-panel").hidden = !level;
+  if (!level) return;
+  text("training-level-value", format(level.stars) + " ★");
+  text("training-level-next", numeric(level.next_stars) ? "Próximo paso: " + format(level.next_stars) + " ★" : "Nivel máximo alcanzado");
+  text("training-level-counts", `${Math.min(level.completed_maps, level.required_maps)} de ${level.required_maps} dificultades · ${Math.min(level.completed_sessions, level.required_sessions)} de ${level.required_sessions} sesiones`);
+  text("training-level-explanation", `Cumplí los objetivos de las misiones marcadas «Cuenta para subir práctica» en dificultades distintas. Al reunir ambos requisitos, subís ${format(level.step)} ★. Los calentamientos y las repeticiones de referencia no suman. El nivel se conserva aunque baje tu rendimiento reciente; recalibrar inicia una nueva progresión. Los ajustes del paso iniciado se mantienen hasta completarlo.`);
+  const host = $("training-level-evidence");
+  host.replaceChildren();
+  for (const item of level.credits || []) host.append(element("p", "", `✓ ${item.title}${item.version ? " [" + item.version + "]" : ""} · ${format(item.stars)} ★ · ${coachDate(item.played_at)}`));
+  if (!level.credits?.length) host.append(element("p", "", "Este paso empieza con las nuevas misiones marcadas."));
+  for (const item of [...(level.history || [])].reverse()) host.append(element("p", "", `${format(item.from)} → ${format(item.to)} ★ · ${coachDate(item.completed_at)}`));
+}
+
 function renderCoachProgress(state) {
+  renderTrainingLevel(state);
   const progress = state.coach_progress;
   const valid = progress && typeof progress === "object";
   $("coach-progress-section").hidden = !valid;
@@ -943,17 +1030,17 @@ function renderCoachProgress(state) {
   text(
     "coach-initial-label",
     newMethod
-      ? "Primera referencia comparable"
+      ? "Inicio de la comparación"
       : "Primera referencia calibrada",
   );
   text(
     "coach-change-label",
-    newMethod ? "Cambio con el cálculo actual" : "Cambio desde la calibración",
+    newMethod ? "Variación desde el inicio" : "Cambio desde la calibración",
   );
   text(
     "coach-best-label",
     newMethod
-      ? "Mejor referencia comparable"
+      ? "Máxima referencia comparable"
       : "Mejor referencia de esta calibración",
   );
   $("coach-method-note").hidden = !progress.method_note;
@@ -964,9 +1051,7 @@ function renderCoachProgress(state) {
     !numeric(next.stars) && numeric(rank.stars) && Number(rank.stars) >= 10.5;
   text(
     "coach-earned-rank",
-    numeric(rank.stars)
-      ? rank.label || stars(rank.stars)
-      : "Rango por consolidar",
+    numeric(rank.stars) ? stars(rank.stars) : "Rango por demostrar",
   );
   text(
     "coach-earned-date",
@@ -981,12 +1066,12 @@ function renderCoachProgress(state) {
     maximumRank
       ? "Rango máximo alcanzado"
       : numeric(next.stars)
-        ? "Próximo rango: " + stars(next.stars)
+        ? "Próximo logro: demostrar " + stars(next.stars)
         : "Próximo rango por definir",
   );
   $("coach-next-count").hidden = maximumRank;
   $("coach-next-progress").hidden = maximumRank;
-  $("coach-rank-requirements").closest("details").hidden = maximumRank;
+  $("coach-rank-goal").hidden = maximumRank;
   const required = Math.max(
     1,
     Number(next.required_maps) ||
@@ -997,43 +1082,44 @@ function renderCoachProgress(state) {
     Math.min(required, Number(next.completed_maps) || 0),
   );
   const missing = required - completed;
-  text("coach-next-count", completed + "/" + required);
+  text("coach-next-count", completed + " de " + required + " mapas");
   $("coach-next-progress").setAttribute("aria-valuemax", String(required));
   $("coach-next-progress").setAttribute("aria-valuenow", String(completed));
   $("coach-next-fill").style.width = (completed / required) * 100 + "%";
+  const low = Number(next.stars);
+  const high = low + Number(settingValue(state, "comparable_star_band", 0.5));
+  const band = numeric(next.stars) ? `${format(low)}–${format(high)} ★` : "la dificultad del próximo rango";
   const missingMessage = missing
-    ? "Te " +
-      (missing === 1 ? "falta " : "faltan ") +
-      missing +
-      (missing === 1
-        ? " mapa distinto con un resultado sólido."
-        : " mapas distintos con resultados sólidos.")
-    : "Los mapas requeridos están completos.";
+    ? `Te ${missing === 1 ? "falta" : "faltan"} ${missing} ${missing === 1 ? "dificultad distinta" : "dificultades distintas"} de ${band} con los objetivos de abajo.`
+    : "Ya reuniste los mapas requeridos. El rango se actualiza al aceptar los resultados.";
   text(
     "coach-next-message",
     maximumRank
-      ? "Consolidaste el rango más alto del coach. Podés seguir practicando según tu referencia actual."
-      : (next.calibrated ? "" : "Primero completá la calibración actual. ") +
-          missingMessage,
+      ? "Alcanzaste el rango más alto del coach. Seguí practicando con tu nivel de práctica y los ajustes de la sesión."
+      : next.calibrated ? missingMessage : "Primero completá la calibración. Después podrás sumar mapas para este logro.",
   );
-  const requirements = Array.isArray(next.requirements)
-    ? next.requirements.filter(
-        (item) => typeof item === "string" && item.trim(),
-      )
-    : [];
-  const requirementsRoot = $("coach-rank-requirements");
-  requirementsRoot.replaceChildren(
+  const missLimit = Number(settingValue(state, "strong_miss_percent", 0.5));
+  const requirements = [
+    `Elegí una dificultad de ${band}. Repetir una que ya cuenta no suma otro mapa; otra dificultad de la misma canción sí puede contar.`,
+    "Terminá y aprobá el mapa (el registro debe mostrar al menos 98 % completado).",
+    `En ese mismo intento: ≥${format(settingValue(state, "strong_accuracy", 97))} % de precisión y ≥${format(settingValue(state, "strong_combo_percent", 80))} % del combo máximo.`,
+    `Misses: hasta ${format(missLimit)} % de los objetos juzgados. Por ejemplo, con 1.000 objetos, hasta ${Math.floor(missLimit * 10)} misses.`,
+  ];
+  $("coach-rank-requirements").replaceChildren(
     ...requirements.map((item) => element("li", "", item)),
   );
+  text("coach-rank-window", `Cuentan los mejores intentos válidos de cada dificultad entre tus últimas ${next.window_plays || settingValue(state, "reference_plays", 100)} partidas de los últimos ${next.window_days || settingValue(state, "reference_days", 30)} días. El avance hacia este logro puede cambiar cuando un resultado sale de esa ventana; los rangos ya ganados se conservan.`);
   const maps = Array.isArray(next.qualifying_maps)
     ? next.qualifying_maps.filter((item) => item && item.title)
     : [];
   const mapsRoot = $("coach-rank-maps");
   mapsRoot.replaceChildren();
+  if (!maps.length) mapsRoot.append(element("p", "", "Todavía no hay resultados que cuenten para este logro."));
   if (maps.length)
-    mapsRoot.append(element("p", "", "Ya aportaron al próximo rango:"));
+    mapsRoot.append(element("p", "", "Estos resultados ya cumplen los objetivos:"));
   maps.forEach((map) => {
     const result = [map.title + (map.version ? " [" + map.version + "]" : "")];
+    if (numeric(map.stars)) result.push(stars(map.stars));
     if (numeric(map.accuracy))
       result.push(accuracy(map.accuracy) + " de precisión");
     if (numeric(map.misses))
@@ -1073,18 +1159,11 @@ function renderCoachProgress(state) {
       (progress.since ? " desde " + coachDate(progress.since) : "") +
       ". "
     : "";
-  text(
-    "coach-progress-method",
-    coverage +
-      "El rango ganado se conserva; la práctica sigue tu referencia actual. " +
-      (newMethod
-        ? "Primera, mejor y cambio comparan referencias calibradas con el cálculo y los ajustes actuales, desde tu última recalibración. La gráfica conserva también las referencias anteriores."
-        : "La comparación y la gráfica corresponden a la última calibración."),
-  );
+  text("coach-progress-method", coverage + "Cada punto guarda la referencia calculada al registrar una partida.");
   text(
     "coach-history-method",
     (progress.method ||
-      "El rango se gana con resultados sólidos en mapas distintos. Las recomendaciones siguen tu rendimiento actual.") +
+      "El rango se gana con resultados sólidos en mapas distintos. Las recomendaciones usan el nivel de práctica cuando está activado y se ajustan al rendimiento reciente.") +
       " Los puntos nuevos se guardan al aceptar el resultado; los reconstruidos usan la fecha de la partida.",
   );
   const history = Array.isArray(progress.history)
@@ -1195,8 +1274,46 @@ function profileValue(item) {
     ? format(item.value) + (unit ? "\u00a0" + unit : "")
     : "Sin datos suficientes";
 }
+function renderTrainingEvidence(state) {
+  const host = $("player-skill-levels");
+  if (host) {
+    host.replaceChildren();
+    (state.player_profile?.skill_levels || []).forEach(item => {
+      const card = element("article", "player-observation");
+      card.append(element("h4", "", item.label), element("div", "player-observation-value", numeric(item.reference) ? format(item.reference) + " ★" : "Por calibrar"));
+      card.append(element("p", "", format(item.samples) + " partidas · " + format(item.distinct_maps) + " mapas · " + format(item.sessions) + (item.sessions === 1 ? " sesión" : " sesiones")));
+      const status = element("span", "player-observation-status", {practice: "Trabajar a este nivel", strength: "Buen control a mayor dificultad", steady: "Cerca de tu referencia", learning: "Faltan partidas variadas"}[item.status]);
+      status.dataset.status = item.status;
+      card.append(status);
+      host.append(card);
+    });
+  }
+  const trend = state.player_profile?.evolution;
+  const root = $("evolution-comparisons");
+  if (!root || !trend) return;
+  root.replaceChildren();
+  text("evolution-summary", format(trend.improved_maps) + " dificultades con algún indicador mejorado de " + format(trend.compared_maps) + " comparadas. Memoria de evolución: hasta " + format(trend.window_plays) + " partidas / " + format(trend.window_days) + " días.");
+  text("evolution-method", trend.method + " La sesión, la referencia actual y la evolución usan ventanas independientes y configurables. Son criterios del coach, no umbrales universales de aprendizaje.");
+  if (!trend.comparisons?.length) root.append(element("p", "player-empty", "La primera comparación aparece al repetir una dificultad en otra sesión y con los mismos mods. Las misiones de referencia pueden hacerlo automáticamente cuando se cumple la espera configurada."));
+  (trend.comparisons || []).slice(0, 12).forEach(item => {
+    const row = element("article", "evolution-row");
+    row.append(element("strong", "", item.title + (item.version ? " [" + item.version + "]" : "")));
+    const mods = (item.mods?.mods || []).map(mod => mod.acronym).join(" + ") || "Sin mods";
+    row.append(element("small", "", coachDate(item.before_at) + " → " + coachDate(item.played_at) + " · " + mods + (item.mods?.rate !== 1 ? " · ×" + format(item.mods?.rate) : "")));
+    if (!item.completed) row.append(element("p", "", "Último intento incompleto. La precisión parcial no cuenta como mejora."));
+    (item.changes || []).forEach(change => {
+      const text = change.label + ": " + format(change.before) + " → " + format(change.after) + (change.key === "accuracy" ? " %" : change.key === "max_combo" ? "×" : "");
+      const metric = element("span", change.improved ? "practice-improvement" : "", (change.improved ? "✓ " : "") + text);
+      row.append(metric);
+    });
+    if (item.has_setback && item.improved) row.append(element("small", "", "Hubo mejoras y retrocesos: revisá cada indicador."));
+    root.append(row);
+  });
+}
+
 function renderPlayerProfile(state) {
   renderCoachProgress(state);
+  renderTrainingEvidence(state);
   const profile = state.player_profile || {};
   const evidence = profile.evidence || {};
   const ready = profile.status === "ready";
@@ -1524,7 +1641,7 @@ function renderTagAnalysis(state) {
         : "") +
       "Cada partida puede aportar a varios tipos de mapa. Comparamos resultados dentro de ±" +
       format(settingValue(state, "comparable_star_band", 0.5)) +
-      " ★ de tu referencia y con el mismo perfil de mods. Los tags describen el mapa; ubicar cada error requiere analizar la partida.",
+      " ★ de tu referencia dentro de este entrenamiento, incluidas las misiones con mods recomendados. Los tags describen el mapa; ubicar cada error requiere analizar la partida.",
   );
   items.forEach((item, index) => {
     const card = element("article", "tag-card");
@@ -1597,6 +1714,10 @@ function renderTagAnalysis(state) {
   );
 }
 function questCheckValue(check, value, target = false) {
+  if (check.key === "mods")
+    return typeof value === "string"
+      ? value
+      : "Mods distintos o no verificables";
   if (value === null || value === undefined || value === "")
     return "Falta dato";
   if (check.key === "complete" && typeof value === "boolean")
@@ -1658,7 +1779,24 @@ function questGoal(map, quest) {
       checks.push({ key: "combo", label: "Combo", target: expected.combo_min });
   }
   const grace = Math.max(0, Number(settingValue(currentState, "quest_grace_checks", 0)) || 0);
-  const required = Math.max(1, checks.length - grace);
+  if (map.play_conditions && !checks.some((check) => check.key === "mods"))
+    checks.unshift({
+      key: "mods",
+      label: "Mods y velocidad",
+      target: map.mods_label,
+      status: "pending",
+    });
+  const planKeys = Array.isArray(expected.required_keys)
+    ? expected.required_keys
+    : null;
+  const mandatory = ["complete", "mods"];
+  const requiredKey = (check) =>
+    check.required ??
+    (planKeys === null || mandatory.includes(check.key) || planKeys.includes(check.key));
+  const requiredChecks = checks.filter(requiredKey);
+  const optional = checks.filter((check) => !requiredKey(check));
+  const requiredTotal = requiredChecks.length;
+  const required = Math.max(1, requiredTotal - grace);
   const list = element("ul", "quest-checks");
   const labels = {
     complete: "Completar el mapa",
@@ -1667,7 +1805,7 @@ function questGoal(map, quest) {
     misses: "Misses",
     combo: "Combo",
   };
-  checks.forEach((check) => {
+  requiredChecks.forEach((check) => {
     const status = ["met", "unmet", "unknown"].includes(check.status)
       ? check.status
       : "pending";
@@ -1711,7 +1849,7 @@ function questGoal(map, quest) {
     list.append(item);
   });
   goal.append(list);
-  if (grace > 0 && checks.length > 1) {
+  if (grace > 0 && requiredTotal > 1) {
     goal.append(
       element(
         "p",
@@ -1719,11 +1857,19 @@ function questGoal(map, quest) {
         "Alcanza con cumplir " +
           required +
           " de " +
-          checks.length +
+          requiredTotal +
           " objetivos, siempre que termines el mapa.",
       ),
     );
   }
+  if (optional.length) {
+    const indicators = element("details", "goal-conditions");
+    indicators.append(element("summary", "", "Indicadores orientativos · no son requisitos"));
+    optional.forEach(check => indicators.append(element("p", "goal-grade-note", (check.label || check.key) + ": " + questCheckValue(check, check.target, true))));
+    goal.append(indicators);
+  }
+  const improvements = (attempt?.improvements || []).filter(item => item.improved);
+  if (improvements.length) goal.append(element("p", "practice-improvement", "Mejoraste respecto de la referencia: " + improvements.map(item => ({accuracy: "precisión", misses: "misses", combo: "combo"}[item.key]) + " " + format(item.before) + " → " + format(item.after)).join(" · ")));
   if (!map.expectation && map.goal)
     goal.append(element("p", "goal-grade-note", map.goal));
   if (expected.grade_note)
@@ -1797,7 +1943,7 @@ function questGoal(map, quest) {
         "p",
         "quest-last-attempt",
         (played ? "Último intento: " + played + ". " : "") +
-          (grace > 0 && checks.length > 1
+          (grace > 0 && requiredTotal > 1
             ? "Podés reintentar; la misma partida debe cumplir los " +
               required +
               " objetivos necesarios."
@@ -1908,6 +2054,8 @@ function mapGoal(map, quest = null) {
   return goal;
 }
 function mapCard(map, quest = null, availability = null, automatic = false) {
+  if (!map.mods_label && availability?.mods_label)
+    map = { ...map, mods_label: availability.mods_label };
   if (numeric(availability?.difficulty?.stars)) {
     const updated = availability.difficulty.stars;
     const changed =
@@ -2003,6 +2151,12 @@ function mapCard(map, quest = null, availability = null, automatic = false) {
   const tags = mapTagChips(map.tags, map.tag_status);
   if (tags) card.append(tags);
   const stats = element("div", "map-stats");
+  if (map.mods_label) {
+    const badge = element("span", "map-mods", map.mods_label);
+    badge.title =
+      "Mods requeridos. Las estrellas y la duración incluyen su efecto.";
+    stats.append(badge);
+  }
   for (const [label, value] of [
     ["BPM", format(map.bpm)],
     ["Duración", duration(map.length)],
@@ -2173,7 +2327,10 @@ function automaticSearchNotice(state, stage = null, empty = false) {
   const discovery = state.discovery;
   if (!discovery) return null;
   const stageKey = (value) => (value === "consolidate" ? "challenge" : value);
-  const needs = (Array.isArray(discovery.needs) ? discovery.needs : []).filter(
+  const requested = stage
+    ? discovery.needs
+    : discovery.search_needs || discovery.needs;
+  const needs = (Array.isArray(requested) ? requested : []).filter(
     (need) => need && (!stage || stageKey(need.stage) === stageKey(stage)),
   );
   if (
@@ -2218,9 +2375,16 @@ function automaticSearchNotice(state, stage = null, empty = false) {
       state: "loading",
       title: stage
         ? "Buscando un mapa para esta etapa"
-        : "Buscando dificultades para tus misiones",
+        : "Buscando mapas para tus misiones y reserva",
       message:
-        "El coach está buscando automáticamente opciones sin jugar adecuadas para tu nivel. Las nuevas misiones aparecerán cuando encuentre un mapa que cumpla los filtros.",
+        (numeric(discovery.active_batch) && numeric(discovery.batch_limit)
+          ? "Lote " +
+            format(discovery.active_batch) +
+            " de hasta " +
+            format(discovery.batch_limit) +
+            ". "
+          : "") +
+        "Recorriendo el catálogo y verificando candidatos. Después de cada lote se comprueba lo que falta; las nuevas misiones aparecen cuando un mapa cumple tus filtros.",
     };
   if (discovery.state === "error")
     return {
@@ -2231,13 +2395,24 @@ function automaticSearchNotice(state, stage = null, empty = false) {
         retryText +
         " Las misiones que ya tenés se conservan.",
     };
+  if (discovery.continuing)
+    return {
+      state: "loading",
+      title: "Continuando la búsqueda",
+      message:
+        "Se revisaron " +
+        format(discovery.batches_completed, "0") +
+        " lotes de este grupo. Todavía faltan opciones; el coach seguirá con el próximo lote desde donde quedó.",
+    };
   return {
     state: "waiting",
-    title: "Esperando una dificultad adecuada",
+    title: discovery.exhausted
+      ? "Fin del recorrido disponible"
+      : "Pausa entre grupos de búsqueda",
     message:
       (discovery.exhausted
-        ? "Se revisaron las opciones disponibles. "
-        : "Todavía faltan mapas que cumplan los filtros de tu práctica. ") +
+        ? "Se llegó al final de la fuente consultada y todavía faltan opciones compatibles. "
+        : "Terminó el grupo de lotes y todavía faltan mapas compatibles con tus filtros. ") +
       retryText +
       " Las nuevas misiones aparecerán automáticamente.",
   };
@@ -2344,7 +2519,13 @@ function renderDiscovery(state) {
     if (numeric(physical.max_bpm))
       meta.push("Hasta " + format(physical.max_bpm) + " BPM");
     if (numeric(physical.max_ar)) meta.push("AR ≤ " + format(physical.max_ar));
-    meta.push("Sin límite de duración");
+    if (numeric(physical.min_length))
+      meta.push("Duración ≥ " + duration(physical.min_length));
+    if (numeric(physical.max_length))
+      meta.push("Duración ≤ " + duration(physical.max_length));
+    if (!physical.min_length && !physical.max_length)
+      meta.push("Sin límite de duración");
+    else meta.push("Duración con los mods indicados");
   }
   const reserve = discovery.reserve || [];
   if (reserve.length)
@@ -2393,6 +2574,7 @@ function renderDiscovery(state) {
     );
   if (
     !needs.length &&
+    !reserve.some((item) => item.missing > 0) &&
     discovery.next_update &&
     discovery.state !== "paused" &&
     Number.isFinite(new Date(discovery.next_update).getTime())
@@ -2605,6 +2787,8 @@ function renderQuestSkips(state) {
           ? ({
               song_banned: "Canción excluida por vos",
               download_quality: "Ya no cumple los filtros de descarga",
+              preferences_changed: "Cambiaste las preferencias de recomendaciones",
+              training_updated: "Nueva progresión del coach",
             }[quest.skipped_reason] || "Dificultad ya jugada") +
               " · " +
               coachDate(quest.skipped_at)
@@ -3366,7 +3550,8 @@ function render(state) {
   const calibrated = p.phase === "training";
   $("demo-banner").hidden = !state.demo;
   text("mode-label", state.mode_label || "osu!standard");
-  text("baseline", format(p.baseline, "Por calibrar"));
+  text("baseline-label", p.training_level ? "Nivel de práctica" : "Referencia para entrenar");
+  text("baseline", format(p.training_level?.stars ?? p.baseline, "Por calibrar"));
   $("baseline").style.fontSize = numeric(p.baseline) ? "" : "26px";
   text("level-unit", numeric(p.baseline) ? "estrellas" : "");
   const baselineDescription = attempts
@@ -3804,6 +3989,12 @@ function compactMapCard(card, map, quest) {
     .filter(Boolean)
     .join(" · ");
   const stats = element("div", "map-stats");
+  if (map.mods_label) {
+    const badge = element("span", "map-mods", map.mods_label);
+    badge.title =
+      "Mods requeridos. Las estrellas y la duración incluyen su efecto.";
+    stats.append(badge);
+  }
   const stars = element("span", "star-rating");
   stars.append(uiIcon("star"), document.createTextNode(format(map.stars)));
   stats.append(
@@ -3816,20 +4007,69 @@ function compactMapCard(card, map, quest) {
   const goal = element("div", "compact-goal");
   goal.append(element("strong", "", "Objetivo: "));
   const targets = [
-    expected.grade_label ||
-      (expected.grade_min ? expected.grade_min + " o mejor" : "Completar"),
+    {
+      key: expected.grade_min || expected.grade_label ? "grade" : "complete",
+      label:
+        expected.grade_label ||
+        (expected.grade_min ? expected.grade_min + " o mejor" : "Completar"),
+    },
   ];
   if (numeric(expected.accuracy_min))
-    targets.push("≥" + accuracy(expected.accuracy_min).replace(/\s+%/, "%"));
+    targets.push({
+      key: "accuracy",
+      label: "≥" + accuracy(expected.accuracy_min).replace(/\s+%/, "%"),
+    });
   if (numeric(expected.misses_max))
-    targets.push("≤" + format(expected.misses_max) + " misses");
+    targets.push({
+      key: "misses",
+      label: "≤" + format(expected.misses_max) + " misses",
+    });
   if (numeric(expected.combo_min))
-    targets.push("≥" + format(expected.combo_min) + "×");
-  goal.append(element("span", "", targets.join(" · ")));
+    targets.push({
+      key: "combo",
+      label: "≥" + format(expected.combo_min) + "×",
+    });
+  // Use the same evaluated attempt as the detailed checklist, never a mix of plays.
+  const checks = Array.isArray(quest?.last_attempt?.checks)
+    ? quest.last_attempt.checks
+    : [];
+  const targetList = element("span", "compact-goal-targets");
+  let visibleTargets = targets;
+  if (Array.isArray(expected.required_keys)) {
+    visibleTargets = targets.filter(item => expected.required_keys.includes(item.key));
+    if (!visibleTargets.some(item => item.key === "complete")) visibleTargets.unshift({key: "complete", label: "Completar"});
+  }
+  visibleTargets.forEach(({ key, label }, index) => {
+    if (index) targetList.append(document.createTextNode(" · "));
+    const check = checks.find((item) => item?.key === key);
+    const status = ["met", "unmet", "unknown"].includes(check?.status)
+      ? check.status
+      : "pending";
+    const target = element("span", "compact-goal-target");
+    target.dataset.key = key;
+    target.dataset.status = status;
+    if (status === "met") {
+      const icon = element("span", "compact-goal-check", "✓ ");
+      icon.setAttribute("aria-hidden", "true");
+      target.append(icon);
+    }
+    target.append(document.createTextNode(label));
+    const description = {
+      met: "Cumplido en el último intento",
+      unmet: "Por alcanzar en el último intento",
+      unknown: "No verificable en el último intento",
+      pending: "Pendiente de un intento",
+    }[status];
+    target.title =
+      description +
+      (check ? " · Resultado: " + questCheckValue(check, check.actual) : "");
+    target.append(element("span", "visually-hidden", " (" + description + ")"));
+    targetList.append(target);
+  });
+  goal.append(targetList);
   goal.title =
-    "Completá el mapa: " +
-    targets.join(" · ") +
-    (numeric(expected.combo_min) ? " de combo" : "");
+    "El verde indica los requisitos cumplidos en el último intento. " +
+    "Completá el mapa y cumplí todos los objetivos en una misma partida.";
   if (!map.expectation && map.goal) goal.append(element("span", "", map.goal));
   const status = quest?.status;
   card.replaceChildren(heading, byline, stats);
@@ -3846,6 +4086,11 @@ function compactMapCard(card, map, quest) {
       ),
     );
   }
+  const role = {benchmark: "Referencia · medí tu avance", challenge: "Desafío · ampliar tu control", practice: "Práctica específica", consolidate: "Consolidar", warmup: "Entrar en ritmo"}[map.training_role || expected.training_role];
+  if (role) card.append(element("p", "training-role", role));
+  if (map.training_progress?.eligible) card.append(element("p", "training-credit", map.training_progress.cycle === currentState?.profile?.training_level?.cycle ? "Cuenta para subir práctica" : "Objetivos conservados · no suma al paso actual"));
+  const improved = (quest?.last_attempt?.improvements || []).filter(item => item.improved);
+  if (improved.length) card.append(element("p", "practice-improvement", "✓ Mejora registrada: " + improved.map(item => ({accuracy: "precisión", misses: "misses", combo: "combo"}[item.key])).join(" · ")));
   card.append(goal, actions, details);
 }
 
@@ -3928,6 +4173,13 @@ function renderCompactProfile(state) {
   ]);
   if (signature !== radarSignature) {
     radarSignature = signature;
+    const band = state.player_profile?.evidence?.star_band;
+    text(
+      "quick-radar-scope",
+      numeric(band?.min) && numeric(band?.max)
+        ? `Resultados recientes en mapas de ${format(band.min)}–${format(band.max)} ★.`
+        : "Resultados recientes en mapas comparables.",
+    );
     const control = buildRadarModel(state, "control");
     const axes =
       radarMode === "control" ? control : buildRadarModel(state, "tags");
@@ -3937,8 +4189,8 @@ function renderCompactProfile(state) {
     text(
       "radar-description",
       radarMode === "control"
-        ? "El borde indica que alcanzás la referencia de control. Compará los valores reales y la evidencia de cada habilidad debajo."
-        : "Precisión en mapas con cada tag, de 0 a 100 %. Los siete ejes mantienen su lugar; los demás tipos y sus resultados están más abajo.",
+        ? "Resultados recientes con escalas ampliadas por eje. El borde representa un resultado perfecto en esa medida; la línea gris marca las referencias de control. Los valores reales y las escalas aparecen debajo."
+        : "Precisión en mapas con cada tag, ampliada de 90 a 100 %. Los valores inferiores se ubican en el centro y conservan su valor real. Cada partida puede aportar a varios tags; esto describe resultados en tu rango actual.",
     );
   }
   text(
@@ -3957,7 +4209,7 @@ function renderCompactProfile(state) {
     );
   else
     pills.append(element("p", "", "Reuniendo evidencia en distintos mapas."));
-  host.replaceChildren(element("h3", "", "Puntos fuertes"), pills);
+  host.replaceChildren(element("h3", "", "Puntos fuertes en tu rango"), pills);
   text(
     "quick-focus-label",
     state.player_profile?.priorities?.[0]?.label ||

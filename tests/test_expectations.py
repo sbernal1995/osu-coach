@@ -141,7 +141,7 @@ class ExpectationTests(unittest.TestCase):
 
     def test_confidence_requires_independent_completed_evidence(self):
         result = expectation_for(beatmap(), profile([play(i) for i in range(6)]), "practice")
-        self.assertEqual(result["confidence"], "moderate")
+        self.assertEqual(result["confidence"], "provisional")  # OD is missing in this fixture.
         result = expectation_for(beatmap(), profile([play(i, key="one") for i in range(6)]), "practice")
         self.assertEqual(result["confidence"], "provisional")
 

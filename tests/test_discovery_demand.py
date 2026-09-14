@@ -9,6 +9,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from osu_coach.storage.discovery_store import DiscoveryStore, ERROR_RETRY_DELAY, EXHAUSTED_RETRY_DELAY
+from osu_coach.settings import DEFAULTS
 
 
 NOW = 2_000_000_000
@@ -32,7 +33,8 @@ class DiscoveryDemandTests(unittest.TestCase):
         self.fetch = Mock(return_value={"maps": [beatmap(10)], "next_cursor": {"page": 2},
                                        "exhausted": False})
         self.daily = Mock(side_effect=AssertionError("Demand must use the batch fetcher"))
-        self.store = DiscoveryStore(self.temp.name, fetcher=self.daily, batch_fetcher=self.fetch)
+        self.store = DiscoveryStore(self.temp.name, fetcher=self.daily, batch_fetcher=self.fetch,
+                                    settings={**DEFAULTS, "discovery_batches_per_pass": 1})
         self.sample = {"player": "Demand fixture", "client": "lazer", "mode": 0,
                        "mods": [], "mod_key": '{"mods":[],"rate":1.0}'}
         self.needs = [need()]
@@ -62,7 +64,8 @@ class DiscoveryDemandTests(unittest.TestCase):
         self.store.stop.set()
         if self.store.thread:
             self.store.thread.join(2)
-        self.store = DiscoveryStore(self.temp.name, fetcher=self.daily, batch_fetcher=self.fetch)
+        self.store = DiscoveryStore(self.temp.name, fetcher=self.daily, batch_fetcher=self.fetch,
+                                    settings={**DEFAULTS, "discovery_batches_per_pass": 1})
 
     @staticmethod
     def retry_epoch(snapshot):

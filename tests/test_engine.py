@@ -7,6 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 import tempfile
 import unittest
+from osu_coach.settings import settings_context
 from unittest.mock import patch
 
 from osu_coach import app
@@ -147,6 +148,7 @@ class RecommendationTests(unittest.TestCase):
         self.assertEqual(len(groups), 1)
         self.assertEqual([item["key"] for item in groups[0]["maps"]], ["candidate-1"])
 
+    @settings_context({"bpm_hard_limit": True})
     def test_recommendations_respect_difficulty_tempo_and_reading_limits(self):
         profile = engine.assess([play(i) for i in range(5)], NOW)
         maps = [beatmap(i, stars=2.5 + .05 * i) for i in range(24)]

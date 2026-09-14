@@ -9,6 +9,9 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 import math
+from statistics import median
+from osu_coach.core.training import timing_comparable, conditions
+from osu_coach.core.mod_policy import identity
 
 from osu_coach.core.tag_analysis import TAG_NAMES
 from osu_coach.core.evidence import recency_weight, session_ids, weighted_mean, setting_text
@@ -58,6 +61,12 @@ def _completed(play):
 
 def _select(window, baseline):
     all_plays, comparable, seen, counts = [], [], set(), Counter()
+    known = [p for p in window if _number(p.get('od')) is not None and conditions(p)]
+    anchor = None
+    if known:
+        common = Counter(identity(conditions(p)) for p in known).most_common(1)[0][0]
+        same_mods = [p for p in known if identity(conditions(p)) == common]
+        anchor = {**same_mods[0], 'od': median(_number(p['od']) for p in same_mods)}
     for play in sorted(window, key=_time, reverse=True):
         stars, key = _number(play.get("stars")), _key(play)
         if (not key or stars is None or stars <= 0 or play.get("mode", 0) != 0
@@ -72,7 +81,7 @@ def _select(window, baseline):
         all_plays.append(play)
         # Count the latest attempts before checking individual measurements;
         # absent telemetry must not resurrect older successful attempts.
-        if abs(stars - baseline) <= get_setting('comparable_star_band') + 1e-8 and counts[key] < get_setting('max_attempts_per_map'):
+        if abs(stars - baseline) <= get_setting('comparable_star_band') + 1e-8 and counts[key] < get_setting('max_attempts_per_map') and (anchor is None or timing_comparable(anchor, play)):
             comparable.append(play)
             counts[key] += 1
     return all_plays, comparable
@@ -274,7 +283,7 @@ def build_player_profile(profile, tag_analysis=None):
         reasons = ["La progresión conserva sus límites actuales mientras se reúnen datos comparables."]
     elif weaknesses:
         mode = "consolidate"
-        reasons = [f"La práctica principal baja hasta {setting_text('consolidate_increment', 2)} ★ para trabajar estas prioridades.",
+        reasons = ["La práctica conserva su dificultad y trabaja estas prioridades mediante los mapas y sus objetivos.",
                    f"Si el desafío ya está habilitado, el paso se limita a +{setting_text('consolidate_increment', 2)} ★."]
     elif (all(by_key[key]["status"] == "strength" for key in ("accuracy", "misses", "completion"))
           and by_key["combo"]["status"] in {"strength", "learning"}):
@@ -285,7 +294,7 @@ def build_player_profile(profile, tag_analysis=None):
                                "action": "Sostené tus buenos resultados al cambiar de canción, siguiendo la meta de cada mapa."})
     else:
         mode = "consolidate"
-        reasons = [f"La práctica principal baja hasta {setting_text('consolidate_increment', 2)} ★ para afianzar resultados intermedios.",
+        reasons = ["La práctica conserva su dificultad para afianzar resultados con objetivos específicos.",
                    f"Si el desafío ya está habilitado, el paso se limita a +{setting_text('consolidate_increment', 2)} ★."]
 
     status = "ready" if ready else "learning"
@@ -315,5 +324,6 @@ def build_player_profile(profile, tag_analysis=None):
             "method": (f"Hasta {get_setting('reference_plays')} partidas de los últimos {get_setting('reference_days')} días del perfil activo. Hasta {get_setting('max_attempts_per_map')} intentos recientes por mapa dentro de ±{setting_text('comparable_star_band')} ★. "
                        f"La recencia pesa con una semivida de {setting_text('half_life_days')} días; cada mapa aporta una media y el peso de su intento más reciente. "
                        f"Las conclusiones requieren {get_setting('profile_min_plays')} mediciones válidas en {get_setting('profile_min_maps')} mapas y {get_setting('profile_min_sessions')} sesiones, separadas por al menos {setting_text('session_gap_minutes')} minutos. "
+                       "Cuando hay OD, las comparaciones de control usan los mods más representados y un OD cercano. "
                        "La recuperación inmediata usa solamente los últimos intentos comparables de la ventana de sesión."),
             "limitations": "Las tendencias de tags describen resultados en mapas con esas etiquetas. El análisis de fallos puntuales requiere estudiar los patrones de la partida."}

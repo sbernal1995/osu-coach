@@ -30,6 +30,7 @@ SCHEMA = [
     field("profile_min_sessions", "Sesiones mínimas del perfil", 2, 1, 30, 1, "Perfil del jugador", "Cantidad de sesiones con resultados comparables."),
     field("session_gap_minutes", "Pausa que separa sesiones (minutos)", 60, 5, 1440, 5, "Perfil del jugador", "Una pausa igual o mayor inicia otra sesión para evaluar evidencia."),
     field("comparable_star_band", "Margen de comparación del perfil (estrellas)", .5, .1, 2.0, .05, "Perfil del jugador", "Distancia máxima a la referencia para comparar mapas, tags y metas."),
+    field("feel_step", "Paso de la sensación de dificultad (estrellas)", .25, .05, 1.0, .05, "Perfil del jugador", "Cuánto sube o baja cada nivel de “¿Cómo lo sentiste?”; los rangos personales siguen usando la dificultad medida."),
     field("warmup_offset", "Reducción para entrar en ritmo (estrellas)", .35, 0.0, 1.5, .05, "Dificultad y progresión", "Cuánto más accesible será el objetivo de la entrada en ritmo."),
     field("challenge_increment", "Aumento del desafío (estrellas)", .15, .05, 1.0, .05, "Dificultad y progresión", "Paso por encima de tu referencia cuando estás listo para avanzar."),
     field("consolidate_increment", "Aumento del desafío al afianzar (estrellas)", .10, 0.0, 1.0, .05, "Dificultad y progresión", "Paso más moderado mientras el perfil pide afianzar."),

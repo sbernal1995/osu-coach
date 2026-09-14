@@ -622,6 +622,21 @@ td:first-child {
   background: transparent;
   color: #c9b6aa;
 }
+.feel-control {
+  border: 1px solid #35323f;
+  background: #23212e;
+  color: #f7f3fb;
+  font-size: 12px;
+  border-radius: 8px;
+  padding: 6px 8px;
+  max-width: 100%;
+}
+.feel-control:disabled {
+  opacity: 0.55;
+}
+.feel-muted {
+  color: #aaa4b8;
+}
 .warnings {
   margin: 24px 0 0;
   border: 1px solid #675c40;

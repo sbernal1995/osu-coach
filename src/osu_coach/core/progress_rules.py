@@ -65,7 +65,12 @@ def _attempt(play):
             or play.get("accuracy_rounded") is True
             or play.get("mode", 0) != 0 or isinstance(play.get("mode"), bool)):
         return None
-    completion, accuracy, stars = (_number(play.get(key)) for key in ("completion", "accuracy", "stars"))
+    # Ranks prove the measured rating; a personal "feel" adjustment never grants
+    # or delays a rank. The stamped play keeps the original stars under stars_sr.
+    stars = _number(play.get("stars_sr"))
+    if stars is None:
+        stars = _number(play.get("stars"))
+    completion, accuracy = (_number(play.get(key)) for key in ("completion", "accuracy"))
     misses, judged, combo, maximum = (_count(play.get(key)) for key in
                                       ("misses", "judged_objects", "max_combo", "map_max_combo"))
     if (completion is None or not Decimal(".98") <= completion <= 1

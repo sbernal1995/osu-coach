@@ -19,10 +19,12 @@ from urllib.request import urlopen
 import webbrowser
 
 from osu_coach.core.engine import assess, recommend, number, apply_player_profile, timestamp, physical_limits
+from osu_coach.core.feel import apply_feel, offsets_for_step
 from osu_coach.core.player_profile import build_player_profile
 from osu_coach.storage.quest_store import QuestStore, scope_key, map_tokens, is_remote
 from osu_coach.storage.progress_store import ProgressStore
 from osu_coach.storage.song_ban_store import SongBanStore
+from osu_coach.storage.feel_store import FeelStore
 from osu_coach.core.song_identity import song_tokens, song_owner
 from osu_coach.storage.discovery_store import DiscoveryStore
 from osu_coach.integrations.discovery_source import candidate_quality_ok
@@ -94,6 +96,7 @@ class Coach:
         self.db.execute("CREATE TABLE IF NOT EXISTS plays (id TEXT PRIMARY KEY, data TEXT NOT NULL, status TEXT NOT NULL)")
         self.quest_store = QuestStore(self.db)
         self.song_bans = SongBanStore(self.db)
+        self.feel_store = FeelStore(self.db)
         self.progress_store = ProgressStore(self.db)
         self.db.commit()
         self.catalog = []
@@ -239,6 +242,54 @@ class Coach:
         with self.lock, self.db:
             self.song_bans.unban(song_owner(self.active), identifier)
 
+    @staticmethod
+    def _feel_key(item):
+        for field in ("beatmap_key", "key"):
+            value = item.get(field)
+            if isinstance(value, str) and value.strip():
+                return value
+        return str(item.get("beatmap_id"))
+
+    def _feel_stamp(self, items, owner):
+        """Apply the player's difficulty feel in place, idempotently.
+
+        Measured stars are remembered under ``stars_sr`` once; the effective
+        ``stars`` is recomputed from them each time, so resets and setting
+        changes keep working without double offsets.
+        """
+        feel = self.feel_store.map(owner)
+        if not feel:
+            return
+        step = self.settings.get("feel_step", DEFAULTS["feel_step"])
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            offset = feel.get(self._feel_key(item))
+            if not offset:
+                continue
+            measured = number(item.get("stars"))
+            if measured <= 0:
+                # Keep the temporary "pending difficulty" window untouched.
+                continue
+            if "stars_sr" not in item:
+                item["stars_sr"] = measured
+            item["stars"] = apply_feel(item["stars_sr"], offset)
+            item["feel"] = offset
+
+    @coach_settings
+    def set_feel(self, beatmap_key, offset):
+        with self.lock:
+            if not self.active:
+                raise ValueError("Jugá una primera partida para guardar la sensación de dificultad.")
+            if isinstance(offset, bool) or not isinstance(offset, (int, float)):
+                raise ValueError("Elegí una de las opciones de sensación de dificultad.")
+            allowed = set(offsets_for_step(self.settings.get("feel_step", DEFAULTS["feel_step"])).values())
+            value = float(offset)
+            if value not in allowed:
+                raise ValueError("Elegí una de las opciones de sensación de dificultad.")
+            with self.db:
+                self.feel_store.set(song_owner(self.active), beatmap_key, value)
+
     def quest_replacements(self, scope, board, maps, profile, analysis, player):
         visible = [quest["map"] for group in board["groups"] for quest in group["quests"]]
         occupied = PlayedHistory([], catalog=self.catalog + maps, completed=visible)
@@ -335,11 +386,15 @@ class Coach:
             return
         with self.lock:
             active = self.training_plays()
+            feel_owner = song_owner(self.active)
+            self._feel_stamp(active, feel_owner)
             profile = assess(active, since=self.config["since"], initial=self.config.get("initial_stars", 2.5))
             maps, _ = self.catalog_for(active[0] if active else None)
             if not maps:
                 # Keep exact played map identities while adjusted stars are pending.
                 maps = [{**m, "stars": -10} for m in self.catalog]
+            else:
+                self._feel_stamp(maps, feel_owner)
             self.tag_store.sync(maps, profile["window"], profile["baseline"], force=force)
 
     @coach_settings
@@ -441,6 +496,8 @@ class Coach:
         with self.lock:
             active = self.training_plays()
             sample = active[0] if active else None
+            feel_owner = song_owner(self.active)
+            self._feel_stamp(active, feel_owner)
             profile = assess(active, since=self.config["since"], initial=self.config.get("initial_stars", 2.5))
             maps, mod_warning = self.catalog_for(sample)
             maps = list(maps) + self.discovery_store.candidates(self.catalog, sample)
@@ -454,6 +511,7 @@ class Coach:
                     if not is_remote(beatmap)
                     or self.installed_quest_map(beatmap, local_keys, local_ids) is not None
                     or candidate_quality_ok(self.download_evidence(beatmap, popularity))]
+            self._feel_stamp(maps, feel_owner)
             tagged_catalog = self.tag_store.enrich(maps)
             tagged_plays = self.tag_store.enrich(profile["window"])
             analysis = analyze_tags(tagged_plays, tagged_catalog, profile["baseline"], now=profile["evaluated_at"])
@@ -589,6 +647,7 @@ class Coach:
                     "quest_completions": quest_completions,
                     "quest_skips": quest_skips,
                     "song_bans": self.song_bans.snapshot(song_owner(self.active)),
+                    "feel": self.feel_store.snapshot(feel_owner),
                     "quest_availability": quest_availability,
                     "recommendation_policy": {"mode": "unplayed", "unit": "difficulty", "history_plays": len(active),
                         "message": "Las nuevas misiones evitan dificultades que ya jugaste. "
@@ -702,6 +761,13 @@ class Handler(BaseHTTPRequestHandler):
                 if not isinstance(body.get("accept"), bool):
                     raise ValueError("Indicá si la partida fue tuya.")
                 self.server.coach.confirm(str(body.get("id", "")), body["accept"])
+            elif self.path == "/api/feel":
+                if set(body) != {"beatmap_key", "offset"}:
+                    raise ValueError("Elegí una de las opciones de sensación de dificultad.")
+                beatmap_key = body.get("beatmap_key")
+                if not isinstance(beatmap_key, str) or not beatmap_key.strip() or len(beatmap_key) > 100:
+                    raise ValueError("La dificultad no tiene una clave identificadora suficiente.")
+                self.server.coach.set_feel(beatmap_key, body.get("offset"))
             elif self.path == "/api/stop":
                 self.send(200, {"ok": True})
                 threading.Thread(target=self.server.shutdown, daemon=True).start()

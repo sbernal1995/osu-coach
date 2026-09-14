@@ -140,7 +140,7 @@ function setAvailability() {
   $("confirm-reset").disabled = busyAction || !online;
   $("cancel-reset").disabled = busyAction;
   document
-    .querySelectorAll(".pending-actions button, .song-preference-button")
+    .querySelectorAll(".pending-actions button, .song-preference-button, .feel-control")
     .forEach((button) => {
       button.disabled = !online || busyAction;
     });
@@ -3164,6 +3164,54 @@ function renderRecommendations(state) {
     root.append(stage);
   });
 }
+const FEEL_LABELS = ["mucho más fácil", "más fácil", "justo", "más difícil", "mucho más difícil"];
+const FEEL_MULTIPLIERS = [-2, -1, 0, 1, 2];
+function feelKey(play) {
+  const fields = ["beatmap_key", "key"];
+  for (const field of fields) {
+    const value = play && play[field];
+    if (value && String(value).trim()) return String(value);
+  }
+  return play && Object.prototype.hasOwnProperty.call(play, "beatmap_id")
+    ? String(play.beatmap_id)
+    : "";
+}
+function feelSelect(state, play) {
+  const key = feelKey(play);
+  if (!key || !play || play.stars === undefined) return null;
+  const step = Number(settingValue(state, "feel_step", 0.25)) || 0.25;
+  const current = Number(play.feel) || 0;
+  const select = element("select", "feel-control");
+  select.dataset.beatmapKey = key;
+  select.title = play.stars_sr !== undefined && Number(play.stars_sr) > 0
+    ? "Dificultad medida " + format(play.stars_sr) + " ★; ajuste de tu sensación."
+    : "Ajustá cómo sentís esta dificultad.";
+  const option = (label, offset) => {
+    const item = element("option", "", label);
+    item.value = String(offset);
+    if (Math.abs(offset - current) < 1e-9) item.selected = true;
+    select.append(item);
+  };
+  FEEL_MULTIPLIERS.forEach((multiplier, index) => option(FEEL_LABELS[index], multiplier * step));
+  if (![...select.options].some((item) => item.selected)) {
+    option("Personalizado", current);
+    select.value = String(current);
+  }
+  select.addEventListener("change", () => {
+    const offset = select.value === "" ? 0 : Number(select.value);
+    if (Math.abs(offset - current) < 1e-9) return;
+    action(
+      "/api/feel",
+      { beatmap_key: key, offset },
+      offset === 0
+        ? "Volvimos a la dificultad medida de este mapa."
+        : "Guardamos cómo sentís este mapa: " +
+            select.options[select.selectedIndex].textContent +
+            ".",
+    );
+  });
+  return select;
+}
 function renderRecent(state) {
   const rows = Array.isArray(state.recent)
     ? state.recent.slice(0, Number(settingValue(state, "session_plays", 20)))
@@ -3195,9 +3243,15 @@ function renderRecent(state) {
       element("div", "table-title", play.title || "Mapa sin título"),
       element("div", "table-version", play.version || ""),
     );
+    const feelCell = element("td");
+    const feelInput = feelSelect(state, play);
+    feelInput
+      ? feelCell.append(feelInput)
+      : feelCell.append(element("span", "feel-muted", "—"));
     row.append(
       map,
       element("td", "numeric", format(play.stars) + " ★"),
+      feelCell,
       element("td", "numeric", accuracy(play.accuracy)),
       element("td", "numeric", format(play.misses)),
     );
@@ -3249,6 +3303,9 @@ function renderPending(state) {
       ),
     );
     if (play.reason) info.append(element("p", "", play.reason));
+    item.append(info);
+    const felt = feelSelect(state, play);
+    if (felt) item.append(felt);
     const buttons = element("div", "pending-actions");
     for (const [accept, label] of [
       [true, "Sí, la acabo de jugar"],
@@ -3267,7 +3324,7 @@ function renderPending(state) {
       );
       buttons.append(button);
     }
-    item.append(info, buttons);
+    item.append(buttons);
     root.append(item);
   });
 }

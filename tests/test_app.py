@@ -82,6 +82,48 @@ class AppIntegrationTests(unittest.TestCase):
                             for m in g["maps"] for t in m.get("tags", [])))
         self.assertEqual(1, len(self.coach.plays()))
 
+    def test_feel_endpoint_adjusts_effective_stars_without_drifting(self):
+        for sample in self.samples:
+            self.coach.add_play(sample)
+        key = self.samples[0]["beatmap_key"]
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        server.coach = self.coach
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        url = f"http://127.0.0.1:{server.server_port}"
+        token = {"X-Coach-Token": self.coach.token}
+        content_type = {"Content-Type": "application/json"}
+        try:
+            invalid = json.dumps({"beatmap_key": key, "offset": 9.99}).encode()
+            with self.assertRaises(HTTPError) as caught:
+                urlopen(Request(url + "/api/feel", data=invalid, headers={**content_type, **token}))
+            self.assertEqual(400, caught.exception.code)
+            for offset in (0.5, 0.5):
+                payload = json.dumps({"beatmap_key": key, "offset": offset}).encode()
+                request = Request(url + "/api/feel", data=payload, headers={**content_type, **token})
+                with urlopen(request) as response:
+                    self.assertTrue(json.load(response)["ok"])
+            state = self.coach.state()
+            row = next(p for p in state["recent"] if p["beatmap_key"] == key)
+            self.assertEqual(0.5, row["feel"])
+            self.assertEqual(self.samples[0]["stars"], row["stars_sr"])
+            state_again = self.coach.state()
+            again = next(p for p in state_again["recent"] if p["beatmap_key"] == key)
+            self.assertEqual(again["stars"], row["stars"])
+            self.assertEqual(1, state_again["feel"]["total"])
+            payload = json.dumps({"beatmap_key": key, "offset": 0}).encode()
+            request = Request(url + "/api/feel", data=payload, headers={**content_type, **token})
+            with urlopen(request) as response:
+                self.assertTrue(json.load(response)["ok"])
+            reset = self.coach.state()
+            restored = next(p for p in reset["recent"] if p["beatmap_key"] == key)
+            self.assertEqual(self.samples[0]["stars"], restored["stars"])
+            self.assertEqual(0, reset["feel"]["total"])
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(2)
+
     def test_http_blocks_forged_posts_and_can_confirm(self):
         score = self.samples[0]
         score["needs_confirmation"] = True

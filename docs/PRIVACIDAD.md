@@ -2,7 +2,7 @@
 
 ## Qué guarda el coach
 
-El directorio de datos contiene la configuración elegida, las rutas del catálogo, los resultados que aceptaste, las misiones y sus intentos, las canciones que excluiste, los rangos ganados y las cachés de metadatos públicos. Los resultados pueden incluir el nombre del jugador, fechas, identidad del mapa, precisión, misses, combo y mods.
+El directorio de datos contiene la configuración elegida, las rutas del catálogo, los resultados que aceptaste, las misiones y sus intentos, las canciones que excluiste, tu sensación de dificultad por mapa, los rangos ganados y las cachés de metadatos públicos. Los resultados pueden incluir el nombre del jugador, fechas, identidad del mapa, precisión, misses, combo y mods.
 
 Por defecto se usa `data/live/`. La demo usa `data/demo/` con partidas y mapas inventados. Ambas rutas parten de la carpeta donde se inicia `python -m osu_coach`. El lanzador `iniciar.cmd` usa siempre la raíz del repositorio. La opción `--data-dir` permite elegir otra ubicación.
 
@@ -18,7 +18,7 @@ El panel escucha en `127.0.0.1`. Las operaciones de escritura del panel usan un 
 
 ## Consultas de Internet
 
-El coach consulta páginas públicas de osu! para obtener tags y candidatos de mapas. Las solicitudes usan identificadores públicos de conjuntos y parámetros de paginación. Los filtros de dificultad y los requisitos de entrenamiento se aplican dentro del coach. No se envían el nombre del jugador, sus puntuaciones, la lista de mapas excluidos ni la configuración personal.
+El coach consulta páginas públicas de osu! para obtener tags y candidatos de mapas. Las solicitudes usan identificadores públicos de conjuntos y parámetros de paginación. Los filtros de dificultad y los requisitos de entrenamiento se aplican dentro del coach. No se envían el nombre del jugador, sus puntuaciones, la lista de mapas excluidos, tu sensación de dificultad ni la configuración personal.
 
 El servidor remoto puede registrar las solicitudes y la dirección IP, como ocurre al visitar una página web. La búsqueda no necesita cookies, una cuenta ni una clave de API. No hay un servicio de analítica del coach.
 

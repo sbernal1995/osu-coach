@@ -988,6 +988,22 @@ th {
 .pending-item {
   padding: 12px 16px;
 }
+.feel-control {
+  border: 1px solid #35323f;
+  background: #23212e;
+  color: #f7f3fb;
+  font-size: 12px;
+  border-radius: 8px;
+  padding: 6px 8px;
+  max-width: 100%;
+  margin-top: 8px;
+}
+.feel-control:disabled {
+  opacity: 0.55;
+}
+.feel-muted {
+  color: #aaa4b8;
+}
 .warnings {
   margin: 0 0 16px;
 }

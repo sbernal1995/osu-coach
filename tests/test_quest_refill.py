@@ -69,10 +69,35 @@ class QuestRefillTests(unittest.TestCase):
         with self.db:
             self.store.record_play(self.scope, play)
 
+    def record_grace(self, play, allowed_missing):
+        with self.db:
+            self.store.record_play(self.scope, play, allowed_missing=allowed_missing)
+
     def reopen(self):
         self.db.close()
         self.db = sqlite3.connect(self.path)
         self.store = QuestStore(self.db)
+
+    def test_grace_allowed_missing_completes_mission_despite_one_unmet_goal(self):
+        board = self.create(self.groups(warmup=[self.beatmap(1)]))
+        quest = board["groups"][0]["quests"][0]
+        self.record(self.result(quest, misses=7))
+        self.assertEqual("in_progress", self.store.current(self.scope)["groups"][0]["quests"][0]["status"])
+        self.record_grace(self.result(quest, misses=7), 1)
+        stored = self.store.current(self.scope)
+        current = stored["groups"][0]["quests"][0]
+        self.assertEqual("completed", current["status"])
+        self.assertEqual(1, stored["completed_count"])
+        self.assertEqual(1, self.store.completions(self.scope)["total"])
+
+    def test_grace_without_explicit_allowed_missing_stays_strict(self):
+        board = self.create(self.groups(warmup=[self.beatmap(1)]))
+        quest = board["groups"][0]["quests"][0]
+        self.record(self.result(quest, misses=7))
+        current = self.store.current(self.scope)["groups"][0]["quests"][0]
+        self.assertFalse(current["last_attempt"]["completed"])
+        self.assertEqual(0, current["last_attempt"]["grace"])
+        self.assertEqual(0, self.store.completions(self.scope)["total"])
 
     def test_no_initial_candidates_stays_empty_until_downloads_become_available(self):
         self.assertIsNone(self.create(self.groups()))

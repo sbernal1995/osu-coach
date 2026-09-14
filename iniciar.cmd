@@ -1,4 +1,4 @@
-@echo off
+
 setlocal
 cd /d "%~dp0"
 
@@ -7,10 +7,10 @@ if exist ".venv\Scripts\python.exe" goto check_environment
 py -3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)" >nul 2>&1
 if not errorlevel 1 goto create_with_py
 
-python -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)" >nul 2>&1
+call python -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)" >nul 2>&1
 if errorlevel 1 goto missing_python
 echo Preparando el entorno de osu! coach...
-python -m venv .venv
+call python -m venv .venv
 if errorlevel 1 goto failed
 goto check_environment
 

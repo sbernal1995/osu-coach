@@ -11,8 +11,8 @@ from datetime import datetime, timezone
 import math
 import re
 
-from osu_coach.core.mod_policy import conditions_match, describe_play, label as mod_label
 from osu_coach.core.grades import evaluate_grade, normalize_grade
+from osu_coach.core.mod_policy import conditions_match, describe_play, label as mod_label
 
 
 _HASH = re.compile(r"(?:[0-9a-f]{32}|[0-9a-f]{40}|[0-9a-f]{64})\Z")
@@ -83,12 +83,17 @@ def _base_grade(value):
     return {"SH": "S", "SSH": "SS"}.get(normalized, normalized)
 
 
-def evaluate_attempt(quest: dict, play: dict, *, now: datetime | None = None) -> dict | None:
+def evaluate_attempt(quest: dict, play: dict, *, now: datetime | None = None, allowed_missing: int = 0) -> dict | None:
     """Return checks for this attempt, or None when it cannot belong to a quest.
 
-Missing measurements stay unknown. Every included check must be met in this
-same play for ``completed`` to become true. A passed flag alone is insufficient
-without an explicit completion fraction of at least 0.98.
+    Missing measurements stay unknown. Finishing the map (the ``complete``
+    check) and any prescribed mods are always required. ``expectation.
+    required_keys`` can narrow the other goals (focused missions); beyond that,
+    ``allowed_missing`` objectives among the remaining required checks may stay
+    unfulfilled and the mission still count as completed (0 = all goals).
+    Every required check must be met in this same play for ``completed`` to
+    become true. A passed flag alone is insufficient without an explicit
+    completion fraction of at least 0.98.
 """
     if not isinstance(quest, dict) or not isinstance(play, dict):
         return None
@@ -146,13 +151,38 @@ without an explicit completion fraction of at least 0.98.
             met = actual <= target if maximum else actual >= target
             status = "met" if met else "unmet"
         checks.append({"key": key, "label": label, "target": target, "actual": actual, "status": status})
-    if beatmap.get("play_conditions"):
-        conditions = beatmap["play_conditions"]
+
+    # A prescribed mod loadout is part of the map's demands and never waivable.
+    conditions = beatmap.get("play_conditions")
+    if conditions:
         checks.insert(0, {"key": "mods", "label": "Mods y velocidad", "target": mod_label(conditions),
-                          "actual": describe_play(play), "status": "met" if conditions_match(conditions, play) else "unmet"})
-    required = expectation.get('required_keys')
-    if isinstance(required, list):
+                          "actual": describe_play(play),
+                          "status": "met" if conditions_match(conditions, play) else "unmet"})
+
+    required_keys = expectation.get("required_keys")
+    if isinstance(required_keys, list):
+        required_keys = {str(key) for key in required_keys}
         for check in checks:
-            check['required'] = check['key'] in required or check['key'] in {'mods', 'complete'}
+            check["required"] = check["key"] in required_keys or check["key"] in {"mods", "complete"}
+    else:
+        for check in checks:
+            check["required"] = True
+
+    grace = 0
+    if not isinstance(allowed_missing, bool):
+        try:
+            grace = max(0, int(allowed_missing))
+        except (TypeError, ValueError, OverflowError):
+            grace = 0
+    # The prescribed mods and finishing the map can never be waived; the global
+    # margin only relaxes objectives that the plan itself counts as required.
+    required_checks = [check for check in checks if check["required"]]
+    mandatory = [check for check in required_checks if check["key"] in {"mods", "complete"}]
+    waivable = [check for check in required_checks if check["key"] not in {"mods", "complete"}]
+    mandatory_met = all(check["status"] == "met" for check in mandatory)
+    met = sum(check["status"] == "met" for check in required_checks)
+    required_count = len(required_checks)
+    effective_required = max(len(mandatory), required_count - min(grace, len(waivable)))
     return {"play_id": play["id"], "played_at": play["played_at"],
-            "completed": all(check["status"] == "met" for check in checks if check.get("required", True)), "checks": checks}
+            "completed": mandatory_met and met >= effective_required, "checks": checks,
+            "required": effective_required, "required_total": required_count, "met": met, "grace": grace}

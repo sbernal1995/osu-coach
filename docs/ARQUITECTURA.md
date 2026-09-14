@@ -86,6 +86,14 @@ La exclusión se aplica antes de seleccionar recomendaciones o reservas. Las mis
 
 `DiscoveryStore` comparte la continuación entre las búsquedas por demanda, periódicas y manuales. El cursor del conector admite una cola de identificadores por verificar además de la posición en el catálogo. Así, el límite de ocho verificaciones por lote no descarta los conjuntos restantes. La demanda recorre grupos configurables con `discovery_batches_per_pass` (10 inicialmente), con separación breve entre lotes y una pausa de `discovery_retry_minutes` al terminar el grupo. Cada lote persiste el cursor, el contador y el próximo intento; un evento despierta al planificador para recalcular las misiones y la reserva antes de continuar, incluso sin un navegador abierto. Una vez cubiertas, se respeta `discovery_interval_hours`. Agotamiento y errores mantienen sus esperas de una hora y 15 minutos. Los cambios de ajustes invalidan los resultados en vuelo. Las peticiones siguen acotadas y espaciadas. Los filtros de todas las etapas se envían al conector local y la reserva online se cuenta fuera de las canciones ya asignadas.
 
+## Sensación de dificultad
+
+`core/feel.py` define la sensación configurada por el jugador: cinco niveles (de «mucho más fácil» a «mucho más difícil») a un paso configurable `feel_step`, que producen desplazamientos de `-2·paso` a `+2·paso` sobre las estrellas medidas. `storage/feel_store.py` guarda un desplazamiento por jugador y dificultad en SQLite, con la misma clave que las preferencias de canciones.
+
+`app.py` añade la sensación solo al construir el estado: antes de evaluar la sesión marca las partidas y los mapas con su desplazamiento neto (`play['stars'] = clamp(play['stars_sr'] + offset)`), conservando la medición original en `stars_sr`. La operación es idempotente y reversible, por lo que recalibraciones, cambios de `feel_step` o reescaneos no acumulan offsets; las estrellas medidas nunca se reescriben. La API expone `POST /api/feel` con validación exacta de las opciones y el panel la dispara desde las partidas recientes y la confirmación de resultados.
+
+Todos los consumidores de estrellas —evaluación de la sesión, recomendaciones, metas, perfil y análisis de tags— leen la dificultad efectiva. Los rangos personales son la única excepción: `core/progress_rules.py` demuestra cada rango sobre `stars_sr`, de modo que la sensación nunca suma ni resta rangos.
+
 ## Motor de dificultad
 
 El escaneo y el cálculo con mods llaman a `integrations/lazer_calculator.py`, que mantiene un proceso local de Node.js para `calculator/worker.cjs`. El worker usa `@tosuapp/lazer-calculator-prebuilt` en la versión fijada por `package-lock.json`. La instalación ejecuta `npm ci --ignore-scripts` explícitamente al iniciar el servicio normal; ni una petición HTTP ni un cálculo individual descargan programas. `--demo` omite esa preparación.

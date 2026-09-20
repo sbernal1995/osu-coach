@@ -7,6 +7,7 @@ create progress, and a completion can be spent only in its assigned cycle.
 import copy
 import json
 import uuid
+from datetime import datetime, timezone
 
 from osu_coach.core.evidence import session_ids
 from osu_coach.core.engine import struggling
@@ -26,6 +27,29 @@ class TrainingStore:
                 "required_maps": get_setting('training_required_maps'),
                 "required_sessions": get_setting('training_required_sessions'),
                 "credits": [], "history": (previous or {}).get('history', [])}
+
+    def lower(self, scope, expected_cycle):
+        """Start an easier step once; preserve the abandoned step as history."""
+        if not get_setting('training_progress_enabled'):
+            raise ValueError("La progresión de práctica está desactivada.")
+        row = self.db.execute("SELECT data FROM training_levels WHERE scope=?", (scope,)).fetchone()
+        if row is None:
+            raise ValueError("Primero completá la calibración para establecer un nivel de práctica.")
+        data = json.loads(row[0])
+        if not isinstance(expected_cycle, str) or expected_cycle != data['cycle']:
+            raise ValueError("El nivel de práctica cambió. Revisá el nivel actual e intentá de nuevo.")
+        target = round(max(.5, data['stars'] - get_setting('training_decrease_step')), 2)
+        if target >= data['stars']:
+            raise ValueError("Ya estás en el nivel mínimo de práctica: 0,50 ★.")
+        data['history'].append({'type': 'manual_decrease', 'from': data['stars'], 'to': target,
+                                'completed_at': datetime.now(timezone.utc).isoformat(),
+                                'maps': len(data['credits']),
+                                'sessions': len({c['session'] for c in data['credits']}),
+                                'credits': copy.deepcopy(data['credits'])})
+        data = self._cycle(target, data)
+        data['manual_decrease'] = True
+        self.db.execute("UPDATE training_levels SET data=? WHERE scope=?", (json.dumps(data), scope))
+        return target
 
     def sync(self, scope, profile, completions, plays):
         if not scope or not get_setting('training_progress_enabled') or profile.get('phase') != 'training':
@@ -73,6 +97,7 @@ class TrainingStore:
         if row is None or row[0] != encoded:
             self.db.execute("INSERT OR REPLACE INTO training_levels VALUES (?, ?)", (scope, encoded))
         result = copy.deepcopy(data)
+        result['lower_stars'] = round(max(.5, data['stars'] - get_setting('training_decrease_step')), 2) if data['stars'] > .5 else None
         result['completed_maps'] = len(data['credits'])
         result['completed_sessions'] = len({c['session'] for c in data['credits']})
         result['next_stars'] = round(min(10.5, data['stars'] + data['step']), 2) if data['stars'] < 10.5 else None

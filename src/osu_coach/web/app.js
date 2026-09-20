@@ -144,6 +144,9 @@ function setAvailability() {
     .forEach((button) => {
       button.disabled = !online || busyAction;
     });
+  document.querySelectorAll("[data-lower-training]").forEach((button) => {
+    button.disabled = !online || busyAction || stopped || !numeric(currentState?.profile?.training_level?.lower_stars);
+  });
   updateSettingsAvailability();
 }
 async function request(path, payload) {
@@ -1005,7 +1008,13 @@ function renderCoachChart(progress) {
 function renderTrainingLevel(state) {
   const level = state.profile?.training_level;
   $("training-level-panel").hidden = !level;
+  document.querySelectorAll("[data-lower-training]").forEach((button) => {
+    button.hidden = !level || !("lower_stars" in level);
+    button.textContent = numeric(level?.lower_stars) ? `Me cuesta · bajar ${format(level.stars - level.lower_stars)} ★` : "Nivel mínimo";
+    button.title = numeric(level?.lower_stars) ? `Si no podés completar los mapas, bajá a ${format(level.lower_stars)} ★. Empezará un nuevo paso y se renovarán las misiones. Tu historial y rango se conservan.` : "Ya estás en el nivel mínimo de práctica.";
+  });
   if (!level) return;
+  text("training-lower-help", numeric(level.lower_stars) ? `¿No lográs completar los mapas? El botón baja la práctica a ${format(level.lower_stars)} ★ y empieza un paso más accesible. Los intentos quedan guardados y tu rango se conserva.` : "Estás en el nivel mínimo de práctica.");
   text("training-level-value", format(level.stars) + " ★");
   text("training-level-next", numeric(level.next_stars) ? "Próximo paso: " + format(level.next_stars) + " ★" : "Nivel máximo alcanzado");
   text("training-level-counts", `${Math.min(level.completed_maps, level.required_maps)} de ${level.required_maps} dificultades · ${Math.min(level.completed_sessions, level.required_sessions)} de ${level.required_sessions} sesiones`);
@@ -1014,7 +1023,7 @@ function renderTrainingLevel(state) {
   host.replaceChildren();
   for (const item of level.credits || []) host.append(element("p", "", `✓ ${item.title}${item.version ? " [" + item.version + "]" : ""} · ${format(item.stars)} ★ · ${coachDate(item.played_at)}`));
   if (!level.credits?.length) host.append(element("p", "", "Este paso empieza con las nuevas misiones marcadas."));
-  for (const item of [...(level.history || [])].reverse()) host.append(element("p", "", `${format(item.from)} → ${format(item.to)} ★ · ${coachDate(item.completed_at)}`));
+  for (const item of [...(level.history || [])].reverse()) host.append(element("p", "", `${item.type === "manual_decrease" ? "Bajada manual: " : "Subida: "}${format(item.from)} → ${format(item.to)} ★ · ${coachDate(item.completed_at)}`));
 }
 
 function renderCoachProgress(state) {
@@ -2789,6 +2798,7 @@ function renderQuestSkips(state) {
               download_quality: "Ya no cumple los filtros de descarga",
               preferences_changed: "Cambiaste las preferencias de recomendaciones",
               training_updated: "Nueva progresión del coach",
+              practice_lowered: "Bajaste el nivel de práctica",
             }[quest.skipped_reason] || "Dificultad ya jugada") +
               " · " +
               coachDate(quest.skipped_at)
@@ -3816,6 +3826,15 @@ $("quest-new-button").addEventListener("click", () =>
       ? "Misiones pendientes renovadas. Tus logros siguen guardados."
       : "Nueva tanda de misiones preparada. El avance anterior quedó guardado.",
   ),
+);
+document.querySelectorAll("[data-lower-training]").forEach((button) =>
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const level = currentState?.profile?.training_level;
+    if (!level || !numeric(level.lower_stars)) return;
+    action("/api/training/lower", { cycle: level.cycle }, `Nivel de práctica reducido a ${format(level.lower_stars)} ★. Nuevo paso con mapas más accesibles.`);
+  }),
 );
 $("reset-button").addEventListener("click", () =>
   $("reset-dialog").showModal(),

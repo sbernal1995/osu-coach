@@ -56,6 +56,7 @@ SCHEMA = [
     field("comparable_od_band", "Margen de OD para comparar precisión", 1.0, .1, 3.0, .1, "Perfil del jugador", "Compara precisión en mapas con ventanas de acierto cercanas y los mismos mods. Si falta OD, la estimación queda provisional."),
     field("bpm_hard_limit", "Usar un límite estricto de BPM", False, None, None, None, "Dificultad y progresión", "Por defecto el tempo no descarta mapas. Se prioriza la exigencia de pulsaciones y patrones; activalo si preferís el límite antiguo."),
     field("training_progress_enabled", "Subir la práctica al cumplir misiones", True, None, None, None, "Progresión del entrenamiento", "Guarda un nivel de práctica por perfil y calibración. Los calentamientos no lo bajan."),
+    field("training_decrease_step", "Bajada manual de práctica (estrellas)", .25, .05, 1.0, .05, "Progresión del entrenamiento", "Cuánto baja el nivel al pulsar Me cuesta. Inicia un paso más accesible y conserva el historial y los rangos."),
     field("training_step", "Subida de práctica (estrellas)", .10, .05, .25, .05, "Progresión del entrenamiento", "Aumento al completar un paso. Los cambios se aplican al siguiente paso."),
     field("training_required_maps", "Dificultades por paso", 3, 1, 12, 1, "Progresión del entrenamiento", "Misiones distintas que indiquen que cuentan para subir. Repetir la misma dificultad no suma."),
     field("training_required_sessions", "Sesiones por paso", 2, 1, 5, 1, "Progresión del entrenamiento", "Reparte los resultados entre sesiones. Las reglas del paso iniciado se conservan."),

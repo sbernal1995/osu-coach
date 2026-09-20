@@ -155,10 +155,10 @@ class QuestStore:
                 decision = predicate(quest)
                 if not decision:
                     continue
-                if decision != "song_banned" and (quest["status"] != "pending" or quest.get("attempt_count", 0)
+                if decision not in {"song_banned", "practice_lowered"} and (quest["status"] != "pending" or quest.get("attempt_count", 0)
                                                   or quest.get("last_attempt") is not None):
                     continue
-                reason = decision if decision in {"download_quality", "song_banned", "preferences_changed", "training_updated"} else "played_before_assignment"
+                reason = decision if decision in {"download_quality", "song_banned", "preferences_changed", "training_updated", "practice_lowered"} else "played_before_assignment"
                 quest.update(status="skipped", skipped_reason=reason, skipped_at=utcnow())
                 saved = copy.deepcopy(quest)
                 saved.setdefault("stage_label", group.get("label"))

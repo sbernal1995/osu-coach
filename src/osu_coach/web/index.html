@@ -117,7 +117,7 @@
                 ><span data-icon="star" aria-hidden="true"></span
                 ><strong id="baseline">···</strong
                 ><span id="level-unit">estrellas</span></span
-              ></span
+              ><button type="button" class="training-lower-button" data-lower-training hidden>Me cuesta · bajar nivel</button></span
             >
             <span class="session-cell session-focus"
               ><span data-icon="target" aria-hidden="true"></span
@@ -670,11 +670,13 @@
             <section id="training-level-panel" class="coach-progress-box" hidden>
               <div class="training-level-head">
                 <h3>Nivel de práctica <span id="training-level-value"></span></h3>
+                <button type="button" class="training-lower-button" data-lower-training hidden>Me cuesta · bajar nivel</button>
                 <strong id="training-level-next"></strong>
               </div>
               <p id="training-level-counts"></p>
+              <p id="training-lower-help" class="coach-progress-method"></p>
               <p id="training-level-explanation" class="coach-progress-method"></p>
-              <details><summary>Resultados de este paso y subidas anteriores</summary>
+              <details><summary>Resultados de este paso y cambios anteriores</summary>
                 <div id="training-level-evidence"></div>
               </details>
             </section>

@@ -246,6 +246,17 @@ class Coach:
                     self.sync_tags()
 
     @coach_settings
+    def lower_training_level(self, cycle):
+        with self.lock:
+            if not self.active:
+                raise ValueError("Todavía no hay un perfil activo.")
+            with self.db:
+                self.training_store.lower(scope_key(self.active, self.config['since']), cycle)
+            # The manual change retires attempted missions as well. Current
+            # gameplay and pending confirmations keep their frozen objectives.
+            self.state()
+
+    @coach_settings
     def reset(self):
         with self.lock:
             self.config["since"] = utcnow()
@@ -594,7 +605,7 @@ class Coach:
                         return "preferences_changed"
                     if (profile.get('training_level') and (quest['map'].get('training_progress') or {}).get('cycle') != profile['training_level']['cycle']
                             and not self.quest_is_protected(quest, pending)):
-                        return 'training_updated'
+                        return 'practice_lowered' if profile['training_level'].get('manual_decrease') else 'training_updated'
                     if (quest['map'].get('expectation', {}).get('model_version') != MODEL_VERSION
                             and not self.quest_is_protected(quest, pending)):
                         return 'training_updated'
@@ -795,6 +806,10 @@ class Handler(BaseHTTPRequestHandler):
                     raise ValueError("Campos de configuración desconocidos.")
                 result = self.server.coach.update_settings(body.get("values"), reset=body.get("reset", False))
                 return self.send(200, {"ok": True, "settings": result})
+            elif self.path == "/api/training/lower":
+                if set(body) != {"cycle"} or not isinstance(body["cycle"], str) or not 0 < len(body["cycle"]) <= 100:
+                    raise ValueError("Indicá el paso de práctica que querés reducir.")
+                self.server.coach.lower_training_level(body["cycle"])
             elif self.path == "/api/reset":
                 self.server.coach.reset()
             elif self.path == "/api/rescan":

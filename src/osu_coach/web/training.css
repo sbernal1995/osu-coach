@@ -1278,3 +1278,22 @@ main {
 .training-credit { font-size: 11px; margin: 4px 0; }
 #training-level-counts { margin: 10px 0; }
 #training-level-evidence p { margin: 8px 0; font-size: 12px; }
+
+.training-lower-button {
+  margin-top: 6px;
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.training-lower-button:hover:not(:disabled), .training-lower-button:focus-visible {
+  color: var(--text);
+  border-color: var(--pink);
+}
+.training-lower-button:disabled { opacity: .5; cursor: default; }
+.training-level-head .training-lower-button { margin: 0 auto 0 0; }

@@ -336,6 +336,14 @@
                     </div>
                     <div class="quest-board-controls">
                       <button
+                        id="favorites-toggle-button"
+                        class="favorites-toggle-button"
+                        type="button"
+                        disabled
+                      >
+                        Modo favoritas
+                      </button>
+                      <button
                         id="quest-new-button"
                         class="quest-new-button"
                         type="button"
@@ -1060,6 +1068,46 @@
                 </p>
               </form>
             </details>
+            <details id="favorites-panel" class="favorites-panel">
+              <summary>
+                Canciones favoritas<span id="favorites-count"></span>
+              </summary>
+              <p>
+                El botón «☆» de una misión guarda la canción. Al activar el modo
+                favoritas, el tablero solo muestra canciones favoritas: repetís
+                cada dificultad para mejorar precisión, combo o misses hasta el
+                FC, y podés seguir repitiéndolas después; al alcanzar el pico,
+                el coach sube a la siguiente dificultad realista de la misma
+                canción. Las favoritas también cuentan para
+                tu práctica. Las demás misiones quedan en pausa con su avance y
+                vuelven al salir del modo favoritas.
+              </p>
+              <ul id="favorites-list"></ul>
+            </details>
+            <details id="favorites-import" class="favorites-import">
+              <summary>Importar favoritas de osu!</summary>
+              <p>
+                Pegá links o ids de tus canciones favoritas (de tu perfil de
+                osu! o del juego), uno por línea o separados por espacios. Solo
+                se marcan las que ya tengas en tu biblioteca local; las demás
+                se informan para que las descargues y vuelvas a importar.
+              </p>
+              <textarea
+                id="favorites-import-text"
+                rows="4"
+                placeholder="https://osu.ppy.sh/beatmapsets/123456#osu/789123&#10;https://osu.ppy.sh/b/789123&#10;789123"
+              ></textarea>
+              <div class="favorites-import-actions">
+                <button
+                  id="favorites-import-button"
+                  class="subtle-button"
+                  type="button"
+                >
+                  Importar favoritas
+                </button>
+              </div>
+              <p id="favorites-import-result" class="favorites-import-result" hidden></p>
+            </details>
             <details id="song-bans-panel" class="song-bans-panel">
               <summary>
                 Canciones excluidas<span id="song-bans-count"></span>
@@ -1083,6 +1131,7 @@
         >
         <div class="footer-tools">
           <span id="footer-status">Preparando el seguimiento local</span
+          ><span id="footer-build" class="footer-build" hidden></span
           ><button id="stop-button" class="stop-button" type="button" disabled>
             Cerrar entrenador
           </button>

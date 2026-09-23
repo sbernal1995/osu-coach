@@ -137,10 +137,20 @@ function setAvailability() {
     stopped ||
     !currentState ||
     !Object.prototype.hasOwnProperty.call(currentState, "quest_board");
+  const favoritesToggle = $("favorites-toggle-button");
+  if (favoritesToggle)
+    favoritesToggle.disabled =
+      !online ||
+      busyAction ||
+      stopped ||
+      !currentState ||
+      !Object.prototype.hasOwnProperty.call(currentState, "quest_board");
   $("confirm-reset").disabled = busyAction || !online;
   $("cancel-reset").disabled = busyAction;
   document
-    .querySelectorAll(".pending-actions button, .song-preference-button, .feel-control")
+    .querySelectorAll(
+      ".pending-actions button, .song-preference-button, .feel-control, .manual-complete-button",
+    )
     .forEach((button) => {
       button.disabled = !online || busyAction;
     });
@@ -2328,13 +2338,83 @@ function mapCard(map, quest = null, availability = null, automatic = false) {
         $("recommendations").querySelector(".map-actions button")?.focus();
     });
     preference.append(ban);
+    const availability = currentState?.quest_availability?.[quest.id];
+    const favorite = Boolean(availability?.favorite);
+    const favoriteId = availability?.favorite_id || null;
+    const star = element(
+      "button",
+      "text-button song-preference-button" + (favorite ? " active-favorite" : ""),
+      (favorite ? "★ " : "☆ ") + "Canción favorita",
+    );
+    star.type = "button";
+    star.title = favorite
+      ? "Quitarla de favoritas: deja solo las que querés repetir hasta el FC."
+      : "Marcar la canción como favorita para practicar sus dificultades hasta el FC.";
+    star.setAttribute(
+      "aria-label",
+      (favorite ? "Quitar de favoritas la canción " : "Marcar como favorita la canción ") +
+        (map.title || "de esta misión"),
+    );
+    star.addEventListener("click", async () => {
+      if (!favorite && !favoriteId) {
+        await action(
+          "/api/favorites/add",
+          { board_id: currentState?.quest_board?.id, quest_id: quest.id },
+          "Canción marcada como favorita. El modo favoritas prioriza repetirla hasta el FC.",
+        );
+      } else {
+        await action(
+          "/api/favorites/remove",
+          { id: favoriteId || quest.id },
+          "Canción quitada de favoritas.",
+        );
+      }
+      if (!star.isConnected) {
+        const focus = $("recommendations").querySelector(".map-actions button");
+        if (focus) focus.focus();
+      }
+    });
+    preference.append(star);
     card.querySelector(".map-details").append(preference);
+    const override = element("div", "song-preference manual-complete");
+    const complete = element(
+      "button",
+      "text-button manual-complete-button",
+      "La hice igual · marcar como completada",
+    );
+    complete.type = "button";
+    complete.title =
+      "La jugaste pero el resultado no se reconoció (por ejemplo, con más mods o una medición fallida). " +
+      "Marcarla completa evita que se renueve perdida; si hubo una partida real asociada, contará para tu entrenamiento.";
+    complete.setAttribute(
+      "aria-label",
+      "Marcar como completada la misión " + (map.title || "de esta misión"),
+    );
+    complete.addEventListener("click", async () => {
+      if (
+        typeof window.confirm === "function" &&
+        !window.confirm(
+          "¿La completaste aunque el entrenador no lo reconoció? La misión se renovará como cualquier otra terminada.",
+        )
+      )
+        return;
+      await action(
+        "/api/quests/complete",
+        { board_id: currentState?.quest_board?.id, quest_id: quest.id },
+        "Misión marcada como completada.",
+      );
+      if (!complete.isConnected)
+        $("recommendations").querySelector(".map-actions button")?.focus();
+    });
+    override.append(complete);
+    card.querySelector(".map-details").append(override);
   }
   return card;
 }
 function automaticSearchNotice(state, stage = null, empty = false) {
   const discovery = state.discovery;
   if (!discovery) return null;
+  if (state.recommendation_policy?.mode === "favorites") return null;
   const stageKey = (value) => (value === "consolidate" ? "challenge" : value);
   const requested = stage
     ? discovery.needs
@@ -2760,6 +2840,66 @@ function renderSongBans(state) {
     root.append(row);
   }
 }
+function renderFavoritesToggle(state) {
+  const button = $("favorites-toggle-button");
+  if (!button) return;
+  const enabled = Boolean(settingValue(state, "favorites_enabled"));
+  button.classList.toggle("favorites-on", enabled);
+  text(
+    "favorites-toggle-button",
+    enabled
+      ? "★ Modo favoritas activado"
+      : "☆ Modo favoritas desactivado",
+  );
+  button.title = enabled
+    ? "Desactivar el modo favoritas: vuelven las misiones normales."
+    : "Activar el modo favoritas: el tablero solo muestra canciones marcadas con ★, repetidas hasta el FC y luego con la siguiente dificultad.";
+}
+function renderFavorites(state) {
+  const items = state.favorites?.items || [];
+  if ($("favorites-count"))
+    text("favorites-count", items.length ? " · " + format(items.length) : "");
+  const root = $("favorites-list");
+  if (!root) return;
+  const signature = JSON.stringify(items);
+  if (root.dataset.signature === signature) return;
+  root.dataset.signature = signature;
+  root.replaceChildren();
+  if (!items.length)
+    root.append(
+      element(
+        "li",
+        "favorites-empty",
+        "Todavía no marcaste canciones favoritas. El modo favoritas repite cada dificultad hasta el FC.",
+      ),
+    );
+  for (const song of items) {
+    const row = element("li", "favorite-item");
+    const label = element("div");
+    label.append(
+      element("strong", "", song.title),
+      element("span", "", song.artist),
+    );
+    const remove = element(
+      "button",
+      "subtle-button song-preference-button",
+      "Dejar de marcar",
+    );
+    remove.type = "button";
+    remove.setAttribute("aria-label", "Quitar de favoritas " + song.title);
+    remove.addEventListener("click", async () => {
+      await action(
+        "/api/favorites/remove",
+        { id: song.id },
+        "Canción quitada de favoritas.",
+      );
+      if (!remove.isConnected)
+        $("favorites-panel")?.querySelector("summary")?.focus();
+    });
+    row.append(label, remove);
+    root.append(row);
+  }
+}
 function renderQuestSkips(state) {
   const ledger = state.quest_skips;
   const items = Array.isArray(ledger?.items)
@@ -2991,6 +3131,17 @@ function renderQuestOverview(state) {
       "Tanda del " + dateFormat.format(new Date(board.created_at)),
     );
   if (board?.profile_label) boardMeta.push(board.profile_label);
+  const shelved = Number(board?.shelf_count) || 0;
+  if (shelved > 0) {
+    const favoritesMode = state.recommendation_policy?.mode === "favorites";
+    boardMeta.push(
+      format(shelved, "0") +
+        (shelved === 1 ? " misión en pausa" : " misiones en pausa") +
+        (favoritesMode
+          ? " · vuelven al salir del modo favoritas"
+          : " · vuelven al activar el modo favoritas"),
+    );
+  }
   text("quest-board-meta", boardMeta.join(" · "));
   const history = Array.isArray(state.quest_history)
     ? state.quest_history.filter((item) => item && item.id).slice(0, 5)
@@ -3126,20 +3277,25 @@ function renderQuestBoard(state) {
       const unplayed =
         state.recommendation_policy?.mode === "unplayed" ||
         group.empty_reason === "no_unplayed_maps_in_range";
+      const favoritesMode = state.recommendation_policy?.mode === "favorites";
       empty.append(
         element(
           "strong",
           "",
-          unplayed
-            ? "Faltan dificultades sin jugar en esta etapa"
-            : "Esta etapa quedó sin misiones",
+          favoritesMode
+            ? "Esta etapa no tiene favoritas adecuadas"
+            : unplayed
+              ? "Faltan dificultades sin jugar en esta etapa"
+              : "Esta etapa quedó sin misiones",
         ),
         document.createTextNode(
-          unplayed
-            ? "No quedan dificultades sin jugar adecuadas para esta etapa. Buscá mapas nuevos o agregá otros a tu biblioteca."
-            : automatic
-              ? "Podés practicar en otro grupo. Después de sumar mapas a tu biblioteca, usá «Renovar misiones pendientes» para buscar opciones en esta etapa."
-              : "Podés practicar en otro grupo. Una nueva tanda volverá a buscar mapas para este rango.",
+          favoritesMode
+            ? "Marcá más canciones con «☆» o sumá otras dificultades favoritas a tu biblioteca. Al terminar una canción, el coach sube solo a la siguiente dificultad disponible."
+            : unplayed
+              ? "No quedan dificultades sin jugar adecuadas para esta etapa. Buscá mapas nuevos o agregá otros a tu biblioteca."
+              : automatic
+                ? "Podés practicar en otro grupo. Después de sumar mapas a tu biblioteca, usá «Renovar misiones pendientes» para buscar opciones en esta etapa."
+                : "Podés practicar en otro grupo. Una nueva tanda volverá a buscar mapas para este rango.",
         ),
       );
       stage.append(empty);
@@ -3157,8 +3313,11 @@ function renderQuestBoard(state) {
     }
     root.append(stage);
   });
-  if (!groups.length && state.discovery?.automatic)
-    root.append(searchNoticeElement(automaticSearchNotice(state, null, true)));
+  const boardSearch = state.discovery?.automatic
+    ? automaticSearchNotice(state, null, true)
+    : null;
+  if (!groups.length && boardSearch)
+    root.append(searchNoticeElement(boardSearch));
   else if (!groups.length)
     root.append(
       element(
@@ -3547,6 +3706,8 @@ function renderPending(state) {
 function render(state) {
   renderSettings(state);
   renderSongBans(state);
+  renderFavorites(state);
+  renderFavoritesToggle(state);
   renderSettingsHelp(state);
   const p = state.profile || {};
   const hasSession = p.session && typeof p.session === "object";
@@ -3693,48 +3854,72 @@ function render(state) {
 }
 async function refresh() {
   if (stopped) return;
+  let state;
   try {
-    const state = await request("/api/state");
-    if (stopped) return;
-    if (
-      !state ||
-      typeof state !== "object" ||
-      !state.profile ||
-      typeof state.token !== "string"
-    )
-      throw new Error("Respuesta incompleta");
-    currentState = state;
-    online = true;
-    text(
-      "connection-user",
-      state.demo
-        ? "Modo de demostración"
-        : state.connection?.ok
-          ? "Conectado como " +
-            (state.profile_label?.split(" · ")[0] || "jugador")
-          : "Esperando osu! y tosu",
-    );
-    $("initial-error").hidden = true;
-    $("connection").dataset.offline = "false";
-    $("connection").dataset.ok = String(Boolean(state.connection?.ok));
-    text("connection-text", state.connection?.message || "Script conectado");
-    const snapshot = JSON.stringify(state);
-    if (snapshot !== currentRender) {
-      currentRender = snapshot;
-      render(state);
-    }
-    setAvailability();
-  } catch {
+    state = await request("/api/state");
+  } catch (error) {
     if (stopped) return;
     online = false;
     $("connection").dataset.offline = "true";
     $("connection").dataset.ok = "false";
-    text("connection-text", "Sin conexión · reintentando…");
+    text(
+      "connection-text",
+      "Sin conexión · " +
+        (error.name === "AbortError" ? "reintentando…" : error.message),
+    );
     text("connection-user", "Sin conexión · reintentando…");
     $("initial-error").hidden = false;
     $("recommendations").setAttribute("aria-busy", "false");
+    console.error("osu-coach: no se pudo obtener el estado.", error);
     setAvailability();
+    return;
   }
+  if (stopped) return;
+  if (
+    !state ||
+    typeof state !== "object" ||
+    !state.profile ||
+    typeof state.token !== "string"
+  ) {
+    text("connection-text", "Respuesta incompleta · reintentando…");
+    $("initial-error").hidden = false;
+    return;
+  }
+  currentState = state;
+  online = true;
+  text(
+    "connection-user",
+    state.demo
+      ? "Modo de demostración"
+      : state.connection?.ok
+        ? "Conectado como " +
+          (state.profile_label?.split(" · ")[0] || "jugador")
+        : "Esperando osu! y tosu",
+  );
+  $("initial-error").hidden = true;
+  $("connection").dataset.offline = "false";
+  $("connection").dataset.ok = String(Boolean(state.connection?.ok));
+  text("connection-text", state.connection?.message || "Script conectado");
+  const build = state.build || "";
+  text("footer-build", build ? "build " + build : "");
+  $("footer-build").hidden = !build;
+  const snapshot = JSON.stringify(state);
+  if (snapshot !== currentRender) {
+    try {
+      render(state);
+      currentRender = snapshot;
+    } catch (error) {
+      console.error(
+        "osu-coach: error al mostrar el panel. El entrenador sigue conectado; revisá la consola (F12).",
+        error,
+      );
+      text(
+        "connection-text",
+        "Error al mostrar el panel · revisá la consola (F12)",
+      );
+    }
+  }
+  setAvailability();
 }
 async function poll() {
   if (stopped) return;
@@ -3836,6 +4021,79 @@ document.querySelectorAll("[data-lower-training]").forEach((button) =>
     action("/api/training/lower", { cycle: level.cycle }, `Nivel de práctica reducido a ${format(level.lower_stars)} ★. Nuevo paso con mapas más accesibles.`);
   }),
 );
+const favoritesToggleButton = $("favorites-toggle-button");
+if (favoritesToggleButton)
+  favoritesToggleButton.addEventListener("click", () =>
+    action(
+      "/api/settings",
+      {
+        values: {
+          favorites_enabled: !settingValue(currentState, "favorites_enabled"),
+        },
+      },
+      settingValue(currentState, "favorites_enabled")
+        ? "Modo favoritas desactivado. Volvieron las misiones normales."
+        : "Modo favoritas activado. Solo aparecen canciones favoritas para repetir hasta el FC.",
+    ),
+  );
+const favoritesImportButton = $("favorites-import-button");
+if (favoritesImportButton)
+  favoritesImportButton.addEventListener("click", async () => {
+    const box = $("favorites-import-text");
+    const result = $("favorites-import-result");
+    const payload = box ? String(box.value || "") : "";
+    if (!payload.trim()) {
+      tell("Pegá links o ids de tus canciones favoritas de osu!.", true);
+      return;
+    }
+    if (busyAction) return;
+    busyAction = true;
+    setAvailability();
+    try {
+      const data = await request("/api/favorites/import", { text: payload });
+      const added = Number(data?.added) || 0;
+      const already = Number(data?.already) || 0;
+      const missing = Array.isArray(data?.missing) ? data.missing : [];
+      const parts = [];
+      if (added)
+        parts.push(
+          added === 1 ? "1 canción marcada" : added + " canciones marcadas",
+        );
+      if (already)
+        parts.push(
+          already === 1
+            ? "1 ya estaba marcada"
+            : already + " ya estaban marcadas",
+        );
+      if (missing.length)
+        parts.push(
+          (missing.length === 1 ? "1 no está" : missing.length + " no están") +
+            " en tu biblioteca: " +
+            missing.slice(0, 10).join(", ") +
+            (missing.length > 10 ? "…" : ""),
+        );
+      const message = parts.length
+        ? "Importación lista: " + parts.join(" · ") + "."
+        : "No se marcó ninguna canción.";
+      tell(message, !added && !already);
+      if (result) {
+        result.hidden = false;
+        result.textContent = message;
+      }
+      if (box) box.value = "";
+      await refresh();
+    } catch (error) {
+      tell(
+        error.name === "AbortError"
+          ? "El script tardó en responder. Revisá la conexión e intentá otra vez."
+          : error.message,
+        true,
+      );
+    } finally {
+      busyAction = false;
+      setAvailability();
+    }
+  });
 $("reset-button").addEventListener("click", () =>
   $("reset-dialog").showModal(),
 );
@@ -3939,7 +4197,8 @@ function setupTrainingLayout() {
   );
   const title = overview.querySelector(".quest-progress-title"),
     completed = $("quest-completed-total"),
-    renew = $("quest-new-button");
+    renew = $("quest-new-button"),
+    favoritesToggle = $("favorites-toggle-button");
   guide.append($("quest-progress"));
   overview.replaceChildren(
     uiIcon("list"),
@@ -3948,6 +4207,7 @@ function setupTrainingLayout() {
     completed,
     element("span", "toolbar-divider", "/"),
     renew,
+    ...(favoritesToggle ? [favoritesToggle] : []),
   );
   renew.setAttribute("aria-label", "Renovar misiones pendientes");
   const toolbar = element("div", "mission-toolbar");
@@ -4105,7 +4365,17 @@ function compactMapCard(card, map, quest) {
       ),
     );
   }
-  const role = {benchmark: "Referencia · medí tu avance", challenge: "Desafío · ampliar tu control", practice: "Práctica específica", consolidate: "Consolidar", warmup: "Entrar en ritmo"}[map.training_role || expected.training_role];
+  const roleMap = {
+    benchmark: "Referencia · medí tu avance",
+    favorite: "Favorita · repetí hasta el FC",
+    challenge: "Desafío · ampliar tu control",
+    practice: "Práctica específica",
+    consolidate: "Consolidar",
+    warmup: "Entrar en ritmo",
+  };
+  const role =
+    roleMap[map.training_role || expected.training_role] ||
+    roleMap.practice;
   if (role) card.append(element("p", "training-role", role));
   if (map.training_progress?.eligible) card.append(element("p", "training-credit", map.training_progress.cycle === currentState?.profile?.training_level?.cycle ? "Cuenta para subir práctica" : "Objetivos conservados · no suma al paso actual"));
   const improved = (quest?.last_attempt?.improvements || []).filter(item => item.improved);

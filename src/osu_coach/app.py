@@ -8,6 +8,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
 from pathlib import Path
+import re
 import secrets
 import signal
 import sqlite3
@@ -21,11 +22,12 @@ import webbrowser
 from osu_coach.core.engine import assess, recommend, number, apply_player_profile, timestamp, physical_limits, recent_window
 from osu_coach.core.feel import apply_feel, offsets_for_step
 from osu_coach.core.player_profile import build_player_profile
-from osu_coach.core.training import benchmark_candidates, skill_references, evolution, MODEL_VERSION, timing_comparable
+from osu_coach.core.training import benchmark_candidates, favorite_candidates, skill_references, evolution, MODEL_VERSION, timing_comparable
 from osu_coach.storage.quest_store import QuestStore, scope_key, map_tokens, is_remote
 from osu_coach.storage.progress_store import ProgressStore
 from osu_coach.storage.training_store import TrainingStore
 from osu_coach.storage.song_ban_store import SongBanStore
+from osu_coach.storage.favorite_song_store import FavoriteSongStore
 from osu_coach.storage.feel_store import FeelStore
 from osu_coach.core.song_identity import song_tokens, song_owner
 from osu_coach.storage.discovery_store import DiscoveryStore
@@ -44,6 +46,32 @@ from osu_coach.settings import validate_settings, load_settings, settings_snapsh
 ROOT = Path.cwd()
 PACKAGE_ROOT = Path(__file__).resolve().parent
 DEFAULT_MOD_KEY = '{"mods":[],"rate":1.0}'
+
+
+def build_label():
+    try:
+        root = ROOT if (ROOT / ".git").exists() else PACKAGE_ROOT.parent.parent
+        if not (root / ".git").exists():
+            return "dev"
+        label = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--short=8", "HEAD"],
+            capture_output=True, text=True, timeout=3,
+        ).stdout.strip()
+        if not label:
+            return "dev"
+        changed = subprocess.run(
+            ["git", "-C", str(root), "status", "--porcelain"],
+            capture_output=True, text=True, timeout=3,
+        ).stdout.strip()
+        return label + ("*" if changed else "")
+    except Exception:
+        return "dev"
+
+
+BUILD = build_label()
+
+FAVORITE_IMPORT_TEXT_LIMIT = 30000
+FAVORITE_IMPORT_ID_LIMIT = 500
 
 
 def utcnow():
@@ -105,6 +133,7 @@ class Coach:
         self.db.execute("CREATE TABLE IF NOT EXISTS plays (id TEXT PRIMARY KEY, data TEXT NOT NULL, status TEXT NOT NULL)")
         self.quest_store = QuestStore(self.db)
         self.song_bans = SongBanStore(self.db)
+        self.favorites = FavoriteSongStore(self.db)
         self.feel_store = FeelStore(self.db)
         self.progress_store = ProgressStore(self.db)
         self.training_store = TrainingStore(self.db)
@@ -279,7 +308,8 @@ class Coach:
             state = self.state(ensure_quests=False)
             with self.db:
                 return self.quest_store.replace(scope_key(self.active, self.config["since"]),
-                    state["profile_label"], state["recommendations"], board_id)
+                    state["profile_label"], state["recommendations"], board_id,
+                    mode="favorites" if get_setting('favorites_enabled') else "unplayed")
 
     def ban_song(self, board_id, quest_id):
         with self.lock:
@@ -301,6 +331,129 @@ class Coach:
     def unban_song(self, identifier):
         with self.lock, self.db:
             self.song_bans.unban(song_owner(self.active), identifier)
+
+    def favorite_song(self, board_id, quest_id):
+        with self.lock:
+            if not self.active:
+                raise ValueError("Jugá una primera partida para preparar tu perfil.")
+            scope = scope_key(self.active, self.config["since"])
+            board = self.quest_store.current(scope)
+            if not board or board["id"] != board_id:
+                raise ValueError("Las misiones cambiaron. Recargá el panel y elegí la canción otra vez.")
+            quest = next((q for g in board["groups"] for q in g["quests"] if q["id"] == quest_id), None)
+            if quest is None:
+                raise ValueError("Esa misión ya se renovó. Elegí una misión actual.")
+            with self.discovery_store.lock:
+                aliases = self.catalog + copy.deepcopy(self.discovery_store.maps)
+            with self.db:
+                self.favorites.favorite(song_owner(self.active), quest["map"], aliases)
+            self.state()
+
+    def unfavorite_song(self, identifier):
+        with self.lock, self.db:
+            self.favorites.unfavorite(song_owner(self.active), identifier)
+
+    @staticmethod
+    def _parse_favorite_import(text):
+        """Extract (kind, number) ids from pasted osu! links or bare numbers."""
+        found = []
+        seen = set()
+
+        def add(kind, value):
+            try:
+                entry = int(value)
+            except (TypeError, ValueError):
+                return
+            if entry <= 0 or (kind, entry) in seen:
+                return
+            seen.add((kind, entry))
+            found.append((kind, entry))
+
+        for match in re.finditer(r"beatmapsets/(\d+)(?:#osu/(\d+)|\/osu\/(\d+))?", text):
+            if match.group(2) or match.group(3):
+                add("map", match.group(2) or match.group(3))
+            else:
+                add("set", match.group(1))
+        for match in re.finditer(r"/(?:b|beatmaps?)/(\d+)", text):
+            add("map", match.group(1))
+        for match in re.finditer(r"(?<![\w#/])(\d{5,})(?![\w])", text):
+            add("bare", match.group(1))
+        return found
+
+    def import_favorites(self, text):
+        with self.lock:
+            if not self.active:
+                raise ValueError("Jugá una primera partida para preparar tu perfil.")
+            if not isinstance(text, str) or not text.strip():
+                raise ValueError("Pegá links o ids de tus canciones favoritas de osu!.")
+            if len(text) > FAVORITE_IMPORT_TEXT_LIMIT:
+                raise ValueError("La lista es demasiado larga. Pegá hasta 500 links o ids por vez.")
+            requested = self._parse_favorite_import(text)
+            if not requested:
+                raise ValueError("No encontré links o ids de beatmaps en el texto.")
+            if len(requested) > FAVORITE_IMPORT_ID_LIMIT:
+                raise ValueError("La lista es demasiado larga. Pegá hasta 500 links o ids por vez.")
+            by_map = {}
+            by_set = {}
+            for beatmap in self.catalog:
+                try:
+                    map_id = int(number(beatmap.get("id")))
+                except (TypeError, ValueError):
+                    map_id = 0
+                if map_id > 0:
+                    by_map.setdefault(map_id, []).append(beatmap)
+                try:
+                    set_id = int(number(beatmap.get("set_id")))
+                except (TypeError, ValueError):
+                    set_id = 0
+                if set_id > 0:
+                    by_set.setdefault(set_id, []).append(beatmap)
+            owner = song_owner(self.active)
+            with self.discovery_store.lock:
+                aliases = self.catalog + copy.deepcopy(self.discovery_store.maps)
+            known = {item["id"] for item in self.favorites.items(owner)}
+            added = already = 0
+            missing = []
+            seen_missing = set()
+            for kind, value in requested:
+                if kind == "map":
+                    entries = by_map.get(value, [])
+                elif kind == "set":
+                    entries = by_set.get(value, [])
+                else:
+                    entries = by_map.get(value, []) or by_set.get(value, [])
+                if not entries:
+                    if value not in seen_missing:
+                        seen_missing.add(value)
+                        missing.append(str(value))
+                    continue
+                groups = {}
+                for entry in entries:
+                    groups.setdefault(frozenset(song_tokens(entry)), []).append(entry)
+                with self.db:
+                    for group in groups.values():
+                        record = self.favorites.favorite(owner, group[0], aliases)
+                        if record["id"] in known:
+                            already += 1
+                        else:
+                            known.add(record["id"])
+                            added += 1
+            self.state()
+            return {"added": added, "already": already, "missing": missing}
+
+    def complete_quest(self, board_id, quest_id):
+        with self.lock:
+            if not self.active:
+                raise ValueError("Jugá una primera partida para preparar misiones para tu perfil.")
+            scope = scope_key(self.active, self.config["since"])
+            board = self.quest_store.current(scope)
+            if not board or board["id"] != board_id:
+                raise ValueError("Las misiones cambiaron. Recargá el panel y elegí la misión otra vez.")
+            with self.db:
+                quest = self.quest_store.complete_manually(scope, board, quest_id)
+                if quest is None:
+                    raise ValueError("Esa misión ya se completó o se renovó. Elegí una misión actual.")
+            self.state()
 
     @staticmethod
     def _feel_key(item):
@@ -357,7 +510,8 @@ class Coach:
         has_benchmark = any(q['map'].get('benchmark') for g in board['groups'] for q in g['quests'] if q['status'] in {'pending', 'in_progress'})
         if has_benchmark:
             maps = [m for m in maps if not m.get('benchmark')]
-        available = [beatmap for beatmap in maps if not occupied.contains(beatmap)]
+        # Favorite repeats stay eligible even while a finished version is visible.
+        available = [beatmap for beatmap in maps if beatmap.get('favorite') is not None or not occupied.contains(beatmap)]
         replacements = []
         for group in board["groups"]:
             if len(group["quests"]) >= 3 and not any(quest["status"] in {"completed", "skipped"} for quest in group["quests"]):
@@ -632,11 +786,35 @@ class Coach:
 
             history = PlayedHistory(active, catalog=self.catalog + maps, completed=completed_history)
             banned = self.song_bans.tokens(song_owner(self.active))
+            favorites = self.favorites.tokens(song_owner(self.active))
+            mode_now = "favorites" if get_setting('favorites_enabled') else "unplayed"
+            shelved_tokens = set()
+            if scope:
+                shelf_board = self.quest_store.current(scope) or {}
+                paused = list(shelf_board.get("shelf", []) or [])
+                for group in shelf_board.get("groups", []) or []:
+                    for quest in group.get("quests", []) or []:
+                        if quest["status"] in {"pending", "in_progress"} \
+                                and QuestStore.quest_mode(quest) != mode_now:
+                            paused.append(quest)
+                # Only marked favorites are hidden from the pools: an unmarked
+                # quest leaving the board must not block its own song, which
+                # may have been favorited since and still needs fresh quests.
+                for quest in paused:
+                    if (quest.get("map") or {}).get("favorite") is not None:
+                        shelved_tokens.update(song_tokens(quest["map"]))
             unplayed = [beatmap for beatmap in maps if not history.contains(beatmap)
-                        and not song_tokens(beatmap) & banned]
-            benchmarks = benchmark_candidates([m for m in maps if history.contains(m) and not song_tokens(m) & banned],
-                                              trend_window, now=profile['evaluated_at'])
-            candidates = unplayed + benchmarks
+                        and not song_tokens(beatmap) & banned
+                        and not song_tokens(beatmap) & shelved_tokens]
+            if get_setting('favorites_enabled'):
+                candidates = favorite_candidates([m for m in maps if not song_tokens(m) & banned
+                                                  and not song_tokens(m) & shelved_tokens],
+                                                 favorites, active, now=profile['evaluated_at'])
+            else:
+                benchmarks = benchmark_candidates([m for m in maps if history.contains(m) and not song_tokens(m) & banned
+                                                   and not song_tokens(m) & shelved_tokens],
+                                                  trend_window, now=profile['evaluated_at'])
+                candidates = unplayed + benchmarks
             groups = recommend(candidates, profile, tag_analysis=analysis, player_profile=player, fill_online=True)
             for group in groups:
                 if not group["maps"]:
@@ -663,6 +841,9 @@ class Coach:
                         return "song_banned"
                     if not mod_policy.preference_ok(quest["map"], sample) and not self.quest_is_protected(quest, pending):
                         return "preferences_changed"
+                    if (get_setting("max_bpm") and number(quest["map"].get("bpm")) > get_setting("max_bpm")
+                            and not self.quest_is_protected(quest, pending)):
+                        return "preferences_changed"
                     if (profile.get('training_level') and (quest['map'].get('training_progress') or {}).get('cycle') != profile['training_level']['cycle']
                             and not self.quest_is_protected(quest, pending)):
                         return 'practice_lowered' if profile['training_level'].get('manual_decrease') else 'training_updated'
@@ -672,7 +853,8 @@ class Coach:
                     if (quest['map'].get('benchmark') and not get_setting('benchmark_enabled')
                             and not self.quest_is_protected(quest, pending)):
                         return 'preferences_changed'
-                    if not quest['map'].get('benchmark') and self.can_skip_played_quest(quest, history, pending):
+                    if not quest['map'].get('benchmark') and not quest['map'].get('favorite') \
+                            and self.can_skip_played_quest(quest, history, pending):
                         return "played_before_assignment"
                     if self.can_skip_download_quality(quest, pending, local_keys, local_ids, popularity):
                         return "download_quality"
@@ -680,8 +862,9 @@ class Coach:
                 with self.db:
                     quest_board = (self.quest_store.ensure(scope, profile_label, groups,
                         replacement_provider=lambda board: self.quest_replacements(scope, board, candidates, profile, analysis, player),
-                        skip_predicate=skip_reason) if ensure_quests
-                                   else self.quest_store.current(scope))
+                        skip_predicate=skip_reason,
+                        mode=mode_now) if ensure_quests
+                                    else self.quest_store.current(scope))
                 quest_history = self.quest_store.history(scope)
                 quest_completions = self.quest_store.completions(scope)
                 quest_skips = self.quest_store.skips(scope)
@@ -701,6 +884,10 @@ class Coach:
                 if count < 3:
                     needs.append({**limits, "missing": 3 - count})
             reserve_target = get_setting("discovery_reserve_per_stage")
+            if get_setting('favorites_enabled'):
+                # Favorites live in the local library; no online search or reserve.
+                needs = []
+                reserve_target = 0
             assigned_songs = {token for g in (quest_board or {}).get("groups", [])
                               for q in g["quests"] for token in song_tokens(q["map"])}
             reserve_maps = [m for m in unplayed if is_remote(m) and not song_tokens(m) & assigned_songs]
@@ -729,6 +916,8 @@ class Coach:
             current_difficulty_ids = {(m["id"], mod_policy.identity(m.get("play_conditions") or mod_policy.options(sample)[0])): m
                                       for m in current_difficulties.values() if m.get("id")}
             if quest_board:
+                owner = song_owner(self.active)
+                favorite_records = self.favorites.items(owner)
                 for group in quest_board["groups"]:
                     for quest in group["quests"]:
                         beatmap = quest["map"]
@@ -749,6 +938,10 @@ class Coach:
                         quest_availability[quest["id"]] = {
                             "installed": local_map is not None, **search_details(lookup),
                             "mods_label": mod_policy.label(conditions),
+                            "favorite": bool(favorite_records and song_tokens(quest["map"])
+                                              and any(song_tokens(quest["map"]) & set(item["tokens"]) for item in favorite_records)),
+                            "favorite_id": next((item["id"] for item in favorite_records
+                                                 if song_tokens(quest["map"]) & set(item["tokens"])), None),
                             "difficulty": ({key: current[key] for key in ("stars", "calculator")} if current else None),
                             "difficulty_pending": self.catalog_stale and local_map is not None,
                             "popularity": copy.deepcopy(self.download_evidence(beatmap, popularity).get("popularity"))}
@@ -763,24 +956,31 @@ class Coach:
                 warnings.append("Estos mods todavía no se pudieron calcular. Elegí Sin mods para comenzar una calibración nueva.")
             for item in pending:
                 item["reason"] = item.get("uncertain_reason", "Confirmá que acabás de jugar esta partida y que corresponde a tu entrenamiento.")
-            return {"app": "osu-coach", "token": self.token, "demo": self.args.demo,
+            return {"app": "osu-coach", "token": self.token, "demo": self.args.demo, "build": BUILD,
                     "settings": settings_snapshot(self.settings),
                     "connection": dict(self.connection), "scanning": self.scanning,
                     "scan_count": self.scan_count, "catalog_count": len(self.catalog),
                     "mode_label": "osu!standard", "profile_label": profile_label,
                     "profile": profile, "player_profile": player, "recommendations": groups, "recent": recent,
-                    "quest_board": quest_board, "quest_history": quest_history,
+                    "quest_board": self.quest_store.public_board(quest_board), "quest_history": quest_history,
                     "quest_completions": quest_completions,
                     "quest_skips": quest_skips,
                     "song_bans": self.song_bans.snapshot(song_owner(self.active)),
+                    "favorites": self.favorites.snapshot(song_owner(self.active)),
                     "feel": self.feel_store.snapshot(feel_owner),
                     "quest_availability": quest_availability,
-                    "recommendation_policy": {"mode": "unplayed", "unit": "difficulty", "history_plays": len(active),
+                    "recommendation_policy": {"mode": "favorites" if get_setting('favorites_enabled') else "unplayed", "unit": "difficulty", "history_plays": len(active),
                         "benchmark_enabled": get_setting('benchmark_enabled'), "benchmark_cooldown_days": get_setting('benchmark_cooldown_days'),
-                        "message": "Las nuevas misiones evitan dificultades que ya jugaste. "
-                                   "Pueden incluir otras dificultades de la misma canción, salvo que la hayas excluido. "
-                                   "Las misiones en práctica conservan sus metas. " +
-                                   (f"Se permite una referencia repetida tras {get_setting('benchmark_cooldown_days')} días para medir avance." if get_setting('benchmark_enabled') else "Las referencias repetidas están desactivadas.")},
+                        "favorites_enabled": get_setting('favorites_enabled'),
+                        "message": (
+                            "Modo favoritas: solo canciones favoritas. Repetís cada dificultad para mejorar precisión, "
+                            "combo o misses hasta el FC; al alcanzar el pico, el coach sube a la siguiente dificultad "
+                            "realista de la misma canción. Las favoritas también cuentan para tu práctica."
+                            if get_setting('favorites_enabled')
+                            else "Las nuevas misiones evitan dificultades que ya jugaste. "
+                                 "Pueden incluir otras dificultades de la misma canción, salvo que la hayas excluido. "
+                                 "Las misiones en práctica conservan sus metas. " +
+                                 (f"Se permite una referencia repetida tras {get_setting('benchmark_cooldown_days')} días para medir avance." if get_setting('benchmark_enabled') else "Las referencias repetidas están desactivadas."))},
                     "coach_progress": coach_progress,
                     "tag_analysis": analysis, "tag_sync": self.tag_store.snapshot(self.catalog),
                     "discovery": discovery,
@@ -891,6 +1091,24 @@ class Handler(BaseHTTPRequestHandler):
                 if set(body) != {"id"} or not isinstance(body["id"], str) or not 0 < len(body["id"]) <= 100:
                     raise ValueError("Indicá la canción que querés volver a permitir.")
                 self.server.coach.unban_song(body["id"])
+            elif self.path == "/api/favorites/add":
+                if set(body) != {"board_id", "quest_id"} or any(not isinstance(v, str) or not v or len(v) > 100 for v in body.values()):
+                    raise ValueError("Indicá una misión actual para marcar su canción como favorita.")
+                self.server.coach.favorite_song(body["board_id"], body["quest_id"])
+            elif self.path == "/api/favorites/remove":
+                if set(body) != {"id"} or not isinstance(body.get("id"), str) or not 0 < len(body["id"]) <= 100:
+                    raise ValueError("Indicá la canción que querés dejar de marcar como favorita.")
+                self.server.coach.unfavorite_song(body["id"])
+            elif self.path == "/api/favorites/import":
+                if set(body) != {"text"} or not isinstance(body.get("text"), str) \
+                        or not body["text"].strip() or len(body["text"]) > 30000:
+                    raise ValueError("Pegá links o ids de tus canciones favoritas de osu!.")
+                result = self.server.coach.import_favorites(body["text"])
+                return self.send(200, {"ok": True, **result})
+            elif self.path == "/api/quests/complete":
+                if set(body) != {"board_id", "quest_id"} or any(not isinstance(v, str) or not v or len(v) > 100 for v in body.values()):
+                    raise ValueError("Indicá una misión actual para marcarla como completada.")
+                self.server.coach.complete_quest(body["board_id"], body["quest_id"])
             elif self.path == "/api/confirm":
                 if not isinstance(body.get("accept"), bool):
                     raise ValueError("Indicá si la partida fue tuya.")

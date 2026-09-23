@@ -450,6 +450,23 @@ h3 {
   padding: 7px 10px;
   border-radius: 6px;
 }
+.favorites-toggle-button {
+  font-size: 12px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 1px solid #8f7ba0;
+  background: transparent;
+  color: #e5d9ee;
+  font-weight: 550;
+}
+.favorites-toggle-button:hover:not(:disabled),
+.favorites-toggle-button.favorites-on {
+  background: #ff8cb012;
+}
+.favorites-toggle-button.favorites-on {
+  border-color: #c97b9a;
+  color: #ffd2e2;
+}
 .quest-replace-note {
   font-size: 11px;
   line-height: 1.45;
@@ -1661,6 +1678,90 @@ footer {
 }
 .song-preference .text-button:hover {
   color: var(--text, #fafafa);
+}
+.song-preference .manual-complete-button {
+  color: var(--amber, #d3a25b);
+}
+.song-preference .manual-complete-button:hover {
+  color: var(--amber, #ecc97f);
+}
+.favorites-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--line, #303140);
+  border-radius: 12px;
+}
+.favorites-panel summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.favorites-panel p,
+.favorites-empty {
+  color: var(--muted, #a8a8b8);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+#favorites-count {
+  color: var(--muted, #a8a8b8);
+  font-weight: 400;
+}
+#favorites-list {
+  list-style: none;
+  padding: 0;
+}
+.favorite-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 0;
+  border-top: 1px solid var(--line, #303140);
+}
+.favorite-item > div {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.favorite-item span {
+  color: var(--muted, #a8a8b8);
+  font-size: 0.8rem;
+}
+.favorite-item .song-preference-button {
+  flex-shrink: 0;
+}
+.favorites-import {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--line, #303140);
+  border-radius: 12px;
+}
+.favorites-import summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.favorites-import p {
+  color: var(--muted, #a8a8b8);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+#favorites-import-text {
+  width: 100%;
+  min-height: 4.5rem;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text, #ece7f2);
+  background: #14131b;
+  border: 1px solid #514958;
+  border-radius: 9px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+.favorites-import-actions {
+  margin-top: 0.6rem;
+}
+.favorites-import-result {
+  margin-top: 0.6rem;
 }
 .song-bans-panel {
   margin-top: 1rem;

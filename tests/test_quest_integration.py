@@ -552,6 +552,42 @@ class QuestIntegrationTests(unittest.TestCase):
             server.server_close()
             thread.join(2)
 
+    def test_manual_completion_http_requires_token_origin_and_an_active_mission(self):
+        board = self.initial_board()
+        quest_id = self.first_quest(board)["id"]
+        server = app.ThreadingHTTPServer(("127.0.0.1", 0), app.Handler)
+        server.coach = self.coach
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        address = f"http://127.0.0.1:{server.server_port}"
+
+        def request(identifier, headers):
+            payload = json.dumps({"board_id": identifier, "quest_id": quest_id}).encode()
+            return Request(address + "/api/quests/complete", data=payload, headers=headers)
+
+        try:
+            valid_headers = {"Content-Type": "application/json", "X-Coach-Token": self.coach.token}
+            for headers in ({"Content-Type": "application/json"},
+                            {**valid_headers, "Origin": "https://unrelated.example"}):
+                with self.assertRaises(HTTPError) as caught:
+                    urlopen(request(board["id"], headers), timeout=5)
+                self.assertEqual(403, caught.exception.code)
+                self.assertEqual("pending", self.current_quest(quest_id)["status"])
+            with urlopen(request(board["id"], {**valid_headers, "Origin": address}), timeout=5) as response:
+                self.assertTrue(json.load(response)["ok"])
+            completed = self.current_quest(quest_id)
+            self.assertEqual("completed", completed["status"])
+            self.assertTrue(completed["completed_manually"])
+            self.assertIsNone(completed["completed_play_id"])
+            for identifier in (board["id"], "wrong-board"):
+                with self.assertRaises(HTTPError) as caught:
+                    urlopen(request(identifier, valid_headers), timeout=5)
+                self.assertEqual(400, caught.exception.code)
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(2)
+
 
 if __name__ == "__main__":
     unittest.main()

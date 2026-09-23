@@ -614,6 +614,10 @@ main {
   font-size: 12px;
   min-height: 32px;
 }
+#recommendations .map-details .manual-complete-button {
+  font-size: 12px;
+  min-height: 32px;
+}
 #recommendations .compact-attempt {
   font-size: 11px;
   color: var(--pink);

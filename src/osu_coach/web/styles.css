@@ -815,6 +815,9 @@ dialog p {
   flex-wrap: wrap;
   justify-content: end;
 }
+.footer-build {
+  color: #aaa0b7;
+}
 .stop-button {
   border: 0;
   background: transparent;
@@ -1517,6 +1520,23 @@ dialog p {
 }
 .quest-new-button:hover {
   background: #ff8cb020;
+}
+.favorites-toggle-button {
+  border: 1px solid #8f7ba0;
+  background: transparent;
+  color: #e5d9ee;
+  padding: 10px 14px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 550;
+}
+.favorites-toggle-button:hover:not(:disabled),
+.favorites-toggle-button.favorites-on {
+  background: #ff8cb012;
+}
+.favorites-toggle-button.favorites-on {
+  border-color: #c97b9a;
+  color: #ffd2e2;
 }
 .quest-replace-note {
   font-size: 10px;

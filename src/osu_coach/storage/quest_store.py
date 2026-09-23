@@ -77,6 +77,7 @@ class QuestStore:
         board["waiting_count"] = waiting
         board["automatic_refresh"] = True
         board["all_completed"] = bool(quests) and waiting == len(quests)
+        board["shelf_count"] = len(board.get("shelf") or [])
         return board
 
     @staticmethod
@@ -134,17 +135,90 @@ class QuestStore:
                         (board["id"], scope, json.loads(scope)[0], "active", json.dumps(board, ensure_ascii=False)))
         return board
 
-    def ensure(self, scope, label, groups, replacement_provider=None, skip_predicate=None):
+    def ensure(self, scope, label, groups, replacement_provider=None, skip_predicate=None, mode="unplayed"):
         board = self.current(scope)
         if board is None:
-            return self._create(scope, label, groups)
+            board = self._create(scope, label, groups)
+            if board is None:
+                return None
+            board["mode"] = mode
+            board["shelf"] = []
+            self._save(board)
+            return board
         self._remember_completions(scope, board)
         if skip_predicate is not None:
             self._skip_previously_played(scope, board, skip_predicate)
+        self._swap_mode(board, mode)
         incomplete = any(len(group["quests"]) < 3 for group in board["groups"])
         if (board["waiting_count"] or board["skipped_waiting_count"] or incomplete) and replacement_provider is not None:
             self._renew_completed(board, replacement_provider(board))
         return board
+
+    @staticmethod
+    def quest_mode(quest):
+        return "favorites" if (quest.get("map") or {}).get("favorite") is not None else "unplayed"
+
+    def _swap_mode(self, board, mode):
+        """Pause quests that don't belong to `mode` and resume matching ones.
+
+        Mode switches never destroy progress: displaced actives wait on the
+        shelf with their attempts intact, and come back when their mode
+        returns. Boards created before the shelf existed adopt the current
+        mode and pause mismatches right away.
+        """
+        shelf = list(board.get("shelf") or [])
+        changed = False
+        if board.get("mode") != mode:
+            board["mode"] = mode
+            changed = True
+        for group in board["groups"]:
+            kept = []
+            for quest in group["quests"]:
+                if quest["status"] in {"pending", "in_progress"} and self.quest_mode(quest) != mode:
+                    shelved = copy.deepcopy(quest)
+                    shelved["shelved_from_stage"] = group.get("stage")
+                    shelf.append(shelved)
+                    changed = True
+                else:
+                    kept.append(quest)
+            group["quests"] = kept
+        remaining = []
+        for quest in shelf:
+            if (quest["status"] in {"pending", "in_progress"}
+                    and self.quest_mode(quest) == mode
+                    and self._restore(board, quest)):
+                changed = True
+            else:
+                remaining.append(quest)
+        if changed or len(remaining) != len(board.get("shelf") or []):
+            board["shelf"] = remaining
+            self._save(board)
+        return changed
+
+    @staticmethod
+    def _restore(board, quest):
+        """Put a shelved quest back into its stage group when a slot is free."""
+        stage = quest.get("shelved_from_stage")
+        group = next((item for item in board["groups"] if item.get("stage") == stage), None)
+        if group is None:
+            group = board["groups"][0] if board["groups"] else None
+        if group is None:
+            return False
+        actives = sum(q["status"] in {"pending", "in_progress"} for q in group["quests"])
+        if actives >= 3:
+            return False
+        restored = copy.deepcopy(quest)
+        restored.pop("shelved_from_stage", None)
+        group["quests"].append(restored)
+        return True
+
+    def public_board(self, board):
+        """Client payload: shelf contents stay server-side, only the count travels."""
+        if board is None:
+            return None
+        public = {key: value for key, value in board.items() if key != "shelf"}
+        public["shelf_count"] = len(board.get("shelf") or [])
+        return public
 
     def _skip_previously_played(self, scope, board, predicate):
         changed = False
@@ -217,9 +291,12 @@ class QuestStore:
                      if quest["status"] in {"completed", "skipped"}]
             slots.extend((None, None) for _ in range(max(0, 3 - len(group["quests"]))))
             for index, quest in slots:
+                # A finish may re-offer the same difficulty (favorite repeats),
+                # but never while that map lives in another visible mission.
+                slot_occupied = occupied if quest is None else occupied - set(map_tokens(quest["map"]))
                 eligible = [candidate for candidate in fresh.get("maps", [])
                             if isinstance(candidate.get("expectation"), dict) and map_tokens(candidate)
-                            and not (map_tokens(candidate) & occupied)
+                            and not (map_tokens(candidate) & slot_occupied)
                             and not (candidate.get('benchmark') and benchmark_count)
                             and not (candidate.get('training_role') == 'challenge' and any(q['map'].get('training_role') == 'challenge' for q in group['quests'] if q['status'] in {'pending', 'in_progress'}))
                             and (not is_remote(candidate) or remote_count < self._online_limit(fresh))]
@@ -249,7 +326,7 @@ class QuestStore:
         if changed:
             self._save(board)
 
-    def replace(self, scope, label, groups, expected_id):
+    def replace(self, scope, label, groups, expected_id, mode=None):
         current = self.current(scope)
         if (current["id"] if current else None) != expected_id:
             raise ValueError("La tanda ya cambió. Recargá el panel para ver las misiones actuales.")
@@ -261,6 +338,11 @@ class QuestStore:
         board = self._create(scope, label, groups)
         if board is None:
             raise ValueError("No se pudieron preparar las misiones. Intentá de nuevo cuando haya mapas disponibles.")
+        if current:
+            # Paused missions survive a manual renewal; they resume on their mode.
+            board["shelf"] = copy.deepcopy(current.get("shelf") or [])
+            board["mode"] = mode or current.get("mode") or "unplayed"
+            self._save(board)
         return board
 
     def _archive(self, board):
@@ -293,7 +375,8 @@ class QuestStore:
                     continue
                 if quest['map'].get('expectation', {}).get('model_version'):
                     full = next((c.get('actual') is True for c in attempt['checks'] if c['key'] == 'complete'), False)
-                    reference = quest.get('practice_reference') or quest['map'].get('benchmark')
+                    reference = (quest.get('practice_reference') or quest['map'].get('benchmark')
+                                 or quest['map'].get('expectation', {}).get('favorite_reference'))
                     if reference and full:
                         improvements = []
                         for key, field, sign in [('accuracy', 'accuracy', 1), ('misses', 'misses', -1), ('combo', 'max_combo', 1)]:
@@ -327,3 +410,32 @@ class QuestStore:
         if changed:
             self._remember_completions(scope, board)
             self._save(board)
+
+    def complete_manually(self, scope, board, quest_id):
+        """Mark an active mission as completed when its attempt went unrecognized.
+
+        A real previous attempt keeps its play linked to the completion, so an
+        accepted passing play that the coach could not credit still counts
+        toward the training cycle; a mission marked without any play completes
+        without awarding practice levels.
+        """
+        for group in board["groups"]:
+            for quest in group["quests"]:
+                if quest["id"] != quest_id:
+                    continue
+                if quest["status"] not in {"pending", "in_progress"}:
+                    return None
+                last = quest.get("last_attempt")
+                quest["status"] = "completed"
+                quest["completed_at"] = utcnow()
+                quest["completed_manually"] = True
+                quest["completion_source"] = "manual"
+                quest["completed_play_id"] = None
+                if isinstance(last, dict):
+                    play_id = last.get("play_id")
+                    if isinstance(play_id, str) and play_id.strip():
+                        quest["completed_play_id"] = play_id
+                self._remember_completions(scope, board)
+                self._save(board)
+                return quest
+        return None

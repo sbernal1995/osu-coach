@@ -12,6 +12,7 @@ from osu_coach.core.grades import target_grade
 from osu_coach.core.evidence import play_time, session_ids, recency_weight, weighted_mean
 from osu_coach.core.mod_policy import conditions_match, play_context, identity, context
 from osu_coach.core.quest_rules import _same_map
+from osu_coach.core.song_identity import song_tokens
 from osu_coach.core.tag_analysis import skill_tags
 from osu_coach.settings import get_setting
 
@@ -117,6 +118,78 @@ def benchmark_candidates(maps, history, *, now=None):
     return result
 
 
+def _best_completed_attempt(beatmap, index):
+    """Best accepted full result comparable on the same difficulty and mods."""
+    def sort_key(play):
+        accuracy = number(play.get('accuracy'))
+        misses = number(play.get('misses'))
+        combo = number(play.get('max_combo'))
+        return ((accuracy if accuracy is not None else -1),
+                -(misses if misses is not None else 10 ** 9),
+                (combo if combo is not None else -1))
+    reference = None
+    for play in index.attempts(beatmap):
+        if not (completed(play) and timing_comparable(beatmap, play, exact=True)):
+            continue
+        if reference is None or sort_key(play) > sort_key(reference):
+            reference = play
+    return reference
+
+
+def _peaked(reference, beatmap):
+    """Full combo with a strong accuracy; nothing meaningful is left to chase."""
+    maximum = number(beatmap.get('max_combo'))
+    return (number(reference.get('misses')) <= 0
+            and (maximum <= 0 or number(reference.get('max_combo')) >= maximum - 1e-8)
+            and number(reference.get('accuracy')) >= get_setting('strong_accuracy'))
+
+
+def _reference_summary(play, beatmap):
+    return {'play_id': play['id'], 'played_at': play['played_at'], 'stars': number(beatmap.get('stars')),
+            'version': beatmap.get('version'),
+            'accuracy': None if play.get('accuracy_rounded') else number(play.get('accuracy')),
+            'misses': number(play.get('misses')), 'max_combo': number(play.get('max_combo')),
+            'completion': play.get('completion'), 'od': play.get('od'), 'label': 'Marca · canción favorita'}
+
+
+def favorite_candidates(maps, favorites, history, *, now=None):
+    """Repeatable improvement missions for favorite songs, without cooldown.
+
+    Each favorite song contributes every owned difficulty, carrying its own
+    best reference or the escalation context below it. Finished difficulties
+    stay playable as maintenance replays instead of vanishing. Recommending
+    stages keep applying their own star envelope, so difficulties outside the
+    current range simply do not get assigned.
+    """
+    if not favorites:
+        return []
+    now = play_time(now) or datetime.now(timezone.utc)
+    index = EvidenceIndex(history)
+    grouped = defaultdict(list)
+    for beatmap in maps:
+        if beatmap.get('source') == 'online' or beatmap.get('local') is False:
+            continue
+        matched = song_tokens(beatmap) & favorites
+        if not matched:
+            continue
+        grouped[tuple(sorted(matched))].append(beatmap)
+    result = []
+    for song in sorted(grouped):
+        ordered = sorted(grouped[song], key=lambda m: (number(m.get('stars')) or 0, str(m.get('key'))))
+        escalated = None
+        for beatmap in ordered:
+            reference = _best_completed_attempt(beatmap, index)
+            if reference is not None:
+                summary = _reference_summary(reference, beatmap)
+                if _peaked(reference, beatmap):
+                    escalated = summary
+                result.append({**beatmap, 'favorite': {'reference': summary}})
+                continue
+            detail = {'escalation': escalated} if escalated is not None else {}
+            result.append({**beatmap, 'favorite': detail})
+    return result
+
+
 def skill_references(plays, baseline, now=None):
     now = play_time(now) or datetime.now(timezone.utc)
     assignments = session_ids(plays)
@@ -218,6 +291,7 @@ def training_goal(expected, beatmap, profile, stage, focus=None):
     if stage == 'challenge':
         primary = 'misses' if result.get('misses_max') is not None else 'accuracy'
     benchmark = beatmap.get('benchmark')
+    favorite = beatmap.get('favorite')
     reference_metrics = result.get('reference_metrics') or {}
     if stage == 'practice' and not benchmark:
         if primary == 'accuracy' and number(reference_metrics.get('accuracy')) is not None:
@@ -241,6 +315,33 @@ def training_goal(expected, beatmap, profile, stage, focus=None):
             result['accuracy_min'] = get_setting('strong_accuracy')
         result['benchmark_reference'] = dict(benchmark)
         result['basis'] = 'Comparación con tu partida del ' + benchmark['played_at'][:10] + ', en la misma dificultad y con los mismos mods.'
+    elif favorite:
+        reference = favorite.get('reference')
+        if reference:
+            if (number(reference.get('misses')) or 0) > 0:
+                primary = 'misses'
+                result['misses_max'] = max(0, math.floor(reference['misses'] * (1 - get_setting('goal_miss_reduction_percent') / 100)))
+            elif number(reference.get('accuracy')) is not None and reference['accuracy'] < 100:
+                primary = 'accuracy'
+                result['accuracy_min'] = round(min(100, reference['accuracy'] + get_setting('goal_accuracy_step')), 2)
+            elif number(reference.get('max_combo')) is not None and number(beatmap.get('max_combo')) and reference['max_combo'] < beatmap['max_combo']:
+                primary = 'combo'
+                result['combo_min'] = min(beatmap['max_combo'], math.ceil(reference['max_combo'] + beatmap['max_combo'] * get_setting('goal_combo_step') / 100))
+            else:
+                primary = 'accuracy'
+                result['accuracy_min'] = get_setting('strong_accuracy')
+            result['favorite_reference'] = dict(reference)
+            if _peaked(reference, beatmap):
+                result['basis'] = ('Canción favorita: mantené tu FC del ' + reference['played_at'][:10]
+                                   + ', en la misma dificultad y con los mismos mods.')
+            else:
+                result['basis'] = ('Canción favorita: mejorá tu marca del ' + reference['played_at'][:10]
+                                   + ', en la misma dificultad y con los mismos mods.')
+        elif favorite.get('escalation'):
+            source = favorite['escalation']
+            version = ' (' + str(source.get('version') or '') + ')' if source.get('version') else ''
+            result['basis'] = ('Canción favorita: subís de dificultad tras tu marca en esta canción' + version
+                               + '. Completala con control para pasar a la siguiente dificultad.')
     elif stage == 'challenge':
         # Zero misses is a consolidation target. An unfamiliar challenge keeps
         # a bounded miss budget and does not require S/FC as a gateway.
@@ -267,7 +368,7 @@ def training_goal(expected, beatmap, profile, stage, focus=None):
                   grade_requirements=grade.get('requirements', []), grade_note=grade.get('note', ''),
                   grade_is_conditional=grade.get('grade_is_conditional', False))
     result.update(required_keys=required, primary_metric=primary, model_version=MODEL_VERSION,
-                  training_role='benchmark' if benchmark else stage,
+                  training_role='favorite' if favorite is not None else ('benchmark' if benchmark else stage),
                   note='La meta principal y el control indicado completan la misión. El grado y los demás indicadores son orientativos; todos los requisitos se evalúan en una misma partida.')
     if focus:
         result['focus'] = {k: focus[k] for k in ('key', 'label', 'action', 'tag') if k in focus}

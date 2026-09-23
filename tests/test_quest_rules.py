@@ -332,5 +332,47 @@ class QuestGraceTests(unittest.TestCase):
                                                   allowed_missing=3)["completed"])
 
 
+class QuestModsTests(unittest.TestCase):
+    def task(self, stars=5.0, conditions=None):
+        task = quest()
+        task["map"]["stars"] = stars
+        if conditions is not None:
+            task["map"]["play_conditions"] = conditions
+        return task
+
+    def test_extra_harder_mods_complete_a_plain_mission_through_stars(self):
+        task = self.task(5.0, conditions=mod_context())
+        attempt = play(mods=[{"acronym": "HD"}], mod_key='{"mods":[{"acronym":"HD"}],"rate":1}', stars=5.4)
+        result = evaluate_attempt(task, attempt, now=NOW)
+        self.assertTrue(result["completed"])
+        check = checks(result)["mods"]
+        self.assertEqual(check["status"], "met")
+        self.assertEqual(check["target"], "Sin mods")
+        self.assertEqual(check["actual"], "HD")
+        self.assertIn("5.4★ > 5★", check["reason"])
+
+    def test_easier_equal_or_unmeasurable_loadouts_keep_requiring_exact_conditions(self):
+        task = self.task(5.0, conditions=mod_context())
+        for changes in ({"stars": 4.4}, {"stars": 5.0}, {}):
+            with self.subTest(changes=changes):
+                attempt = play(mods=[{"acronym": "HT"}], mod_key='{"mods":[{"acronym":"HT"}],"rate":.75}', **changes)
+                result = evaluate_attempt(task, attempt, now=NOW)
+                self.assertEqual(checks(result)["mods"]["status"], "unmet")
+                self.assertFalse(result["completed"])
+
+    def test_prescribed_mods_stay_stricter_than_plain_or_lighter_plays(self):
+        task = self.task(6.0, conditions=mod_context("DT"))
+        result = evaluate_attempt(task, play(stars=5.6), now=NOW)
+        self.assertEqual(checks(result)["mods"]["status"], "unmet")
+        self.assertFalse(result["completed"])
+
+    def test_exact_conditions_need_no_star_fallback_or_reason(self):
+        task = self.task(4.0, conditions=mod_context("HD"))
+        attempt = play(mods=[{"acronym": "HD"}], mod_key='{"mods":[{"acronym":"HD"}],"rate":1}', stars=4.1)
+        result = evaluate_attempt(task, attempt, now=NOW)
+        self.assertEqual(checks(result)["mods"]["status"], "met")
+        self.assertIsNone(checks(result)["mods"]["reason"])
+
+
 if __name__ == "__main__":
     unittest.main()

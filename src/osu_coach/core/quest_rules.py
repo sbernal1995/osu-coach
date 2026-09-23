@@ -87,10 +87,13 @@ def evaluate_attempt(quest: dict, play: dict, *, now: datetime | None = None, al
     """Return checks for this attempt, or None when it cannot belong to a quest.
 
     Missing measurements stay unknown. Finishing the map (the ``complete``
-    check) and any prescribed mods are always required. ``expectation.
-    required_keys`` can narrow the other goals (focused missions); beyond that,
-    ``allowed_missing`` objectives among the remaining required checks may stay
-    unfulfilled and the mission still count as completed (0 = all goals).
+    check) and any prescribed mods are always required. A played loadout whose
+    effective stars exceed the prescribed difficulty also satisfies the mods
+    check, so extra harder mods complete the mission instead of blocking it.
+    ``expectation.required_keys`` can narrow the other goals (focused
+    missions); beyond that, ``allowed_missing`` objectives among the remaining
+    required checks may stay unfulfilled and the mission still count as
+    completed (0 = all goals).
     Every required check must be met in this same play for ``completed`` to
     become true. A passed flag alone is insufficient without an explicit
     completion fraction of at least 0.98.
@@ -153,11 +156,22 @@ def evaluate_attempt(quest: dict, play: dict, *, now: datetime | None = None, al
         checks.append({"key": key, "label": label, "target": target, "actual": actual, "status": status})
 
     # A prescribed mod loadout is part of the map's demands and never waivable.
+    # Playing a stricter loadout is not a mistake: when the effective stars of
+    # the played replay exceed the difficulty the plan asked for, the match
+    # holds (e.g. HD over a "Sin modos" mission once its stars are higher).
     conditions = beatmap.get("play_conditions")
     if conditions:
+        mods_met = conditions_match(conditions, play)
+        mods_reason = None
+        if not mods_met:
+            required_stars = _number(beatmap.get("stars"))
+            played_stars = _number(play.get("stars"))
+            if required_stars is not None and played_stars is not None and played_stars > required_stars:
+                mods_met = True
+                mods_reason = "Más difícil: " + describe_play(play) + f" ({played_stars:g}★ > {required_stars:g}★)"
         checks.insert(0, {"key": "mods", "label": "Mods y velocidad", "target": mod_label(conditions),
-                          "actual": describe_play(play),
-                          "status": "met" if conditions_match(conditions, play) else "unmet"})
+                          "actual": describe_play(play), "reason": mods_reason,
+                          "status": "met" if mods_met else "unmet"})
 
     required_keys = expectation.get("required_keys")
     if isinstance(required_keys, list):

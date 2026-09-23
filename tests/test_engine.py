@@ -171,6 +171,27 @@ class RecommendationTests(unittest.TestCase):
         self.assertEqual(len(chosen), len(set(chosen)))
         self.assertFalse(set(chosen) & {m["key"] for m in invalid})
 
+    @settings_context({"max_bpm": 200})
+    def test_max_bpm_is_an_absolute_cap_without_strict_mode(self):
+        profile = engine.assess([play(i) for i in range(5)], NOW)
+        self.assertEqual(200, engine.physical_limits(profile)["bpm"])
+        maps = [beatmap(1, stars=3.0, bpm=180), beatmap(2, stars=3.0, bpm=200),
+                beatmap(3, stars=3.0, bpm=201), beatmap(4, stars=3.0, bpm=250)]
+        groups = engine.recommend(maps, profile, stages={"practice"})
+        chosen = [item["key"] for item in groups[0]["maps"]]
+        self.assertIn("candidate-1", chosen)
+        self.assertIn("candidate-2", chosen)
+        self.assertNotIn("candidate-3", chosen)
+        self.assertNotIn("candidate-4", chosen)
+
+    def test_max_bpm_caps_the_anchor_margin_when_strict_mode_is_on(self):
+        profile = engine.assess([play(i, bpm=190) for i in range(5)], NOW)
+        self.assertIsNone(engine.physical_limits(profile)["bpm"])
+        with settings_context({"bpm_hard_limit": True, "bpm_margin": 10, "max_bpm": 205}):
+            self.assertEqual(200, engine.physical_limits(profile)["bpm"])
+        with settings_context({"bpm_hard_limit": True, "bpm_margin": 10, "max_bpm": 195}):
+            self.assertEqual(195, engine.physical_limits(profile)["bpm"])
+
     def test_calibration_does_not_add_a_challenge_step(self):
         profile = engine.assess([play(0)], NOW)
         groups = engine.recommend([], profile)

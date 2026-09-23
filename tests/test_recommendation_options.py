@@ -29,10 +29,13 @@ class RecommendationPolicyTests(unittest.TestCase):
     def test_validation_rejects_inverted_ranges_and_unknown_mods(self):
         for changes in ({"recommendation_min_seconds": 301, "recommendation_max_seconds": 300},
                         {"recommendation_min_seconds": -1}, {"recommendation_max_seconds": "120"},
-                        {"recommendation_mods": "RX"}, {"recommendation_mods": ["HD"]}):
+                        {"recommendation_mods": "RX"}, {"recommendation_mods": ["HD"]},
+                        {"max_bpm": -1}, {"max_bpm": 601}, {"max_bpm": "180"}):
             with self.subTest(changes=changes), self.assertRaises(ValueError):
                 validate_settings(changes)
         self.assertEqual(300, validate_settings({"recommendation_min_seconds": 300})["recommendation_min_seconds"])
+        self.assertEqual(220, validate_settings({"max_bpm": 220})["max_bpm"])
+        self.assertEqual(0, validate_settings({"max_bpm": 0})["max_bpm"])
 
     def test_all_stages_and_sources_apply_duration(self):
         profile = engine.assess([play(i) for i in range(8)], NOW)

@@ -221,6 +221,30 @@ class QuestRotationTests(unittest.TestCase):
         self.assertEqual(1, after["quest_board"]["completed_count"])
         self.assertEqual(1, after["quest_completions"]["total"])
 
+    def test_max_bpm_change_retires_untouched_missions_and_assigns_below_the_cap(self):
+        board = self.initial
+        previous = {quest["id"] for quest in self.quests(board)}
+        slow = []
+        for index, beatmap in enumerate(self.maps):
+            clone = deepcopy(beatmap)
+            clone.update(key=f"rotation-slow-{index}", id=90000 + index, set_id=90000 + index,
+                         title=f"Slow song {index}", bpm=120)
+            slow.append(clone)
+        self.coach.catalog.extend(slow)
+        self.coach.update_settings({"max_bpm": 140})
+        state = self.coach.state()
+        self.assertEqual(board["id"], state["quest_board"]["id"])
+        refreshed = self.quests(state["quest_board"])
+        self.assertEqual(9, state["quest_board"]["active_count"])
+        self.assertTrue(refreshed)
+        self.assertTrue(all(quest["map"]["bpm"] <= 140 for quest in refreshed))
+        self.assertTrue(all(quest["map"]["title"].startswith("Slow song") for quest in refreshed))
+        self.assertFalse(previous & {quest["id"] for quest in refreshed})
+        self.assertEqual(9, state["quest_skips"]["total"])
+        self.assertTrue(all(item["skipped_reason"] == "preferences_changed"
+                            for item in state["quest_skips"]["items"]))
+        self.assertEqual(0, state["quest_completions"]["total"])
+
     def test_completed_difficulties_are_not_recommended_again(self):
         board = self.initial
         completed_keys = set()

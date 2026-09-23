@@ -123,3 +123,17 @@ class TrainingLevels(unittest.TestCase):
         for group in groups:
             for m in group['maps']:
                 self.assertFalse(m['training_progress']['eligible'])
+
+    def test_manual_completion_credits_when_a_real_play_is_linked(self):
+        q, p = self.completion(1)
+        q['completed_manually'] = True
+        q['completion_source'] = 'manual'
+        result = self.sync([(q, p)])
+        self.assertEqual(1, result['completed_maps'])
+
+    def test_manual_completion_without_a_real_play_does_not_credit(self):
+        q, _ = self.completion(1)
+        q['completed_play_id'] = None
+        q['completed_manually'] = True
+        result = self.store.sync('profile/epoch', self.profile, [q], [])
+        self.assertEqual(0, result['completed_maps'])

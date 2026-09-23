@@ -228,6 +228,43 @@ class QuestRefillTests(unittest.TestCase):
         self.assertEqual(log, self.store.skips(self.scope))
         self.assertEqual(0, self.store.completions(self.scope)["total"])
 
+    def test_manual_completion_marks_mission_done_and_logs_it(self):
+        board = self.create(self.groups(warmup=[self.beatmap(1)]))
+        quest = board["groups"][0]["quests"][0]
+        with self.db:
+            self.assertEqual(quest, self.store.complete_manually(self.scope, board, quest["id"]))
+        stored = self.store.current(self.scope)
+        current = stored["groups"][0]["quests"][0]
+        self.assertEqual("completed", current["status"])
+        self.assertTrue(current["completed_manually"])
+        self.assertEqual("manual", current["completion_source"])
+        self.assertIsNotNone(current["completed_at"])
+        self.assertIsNone(current["completed_play_id"])
+        self.assertEqual(1, stored["completed_count"])
+        log = self.store.completions(self.scope)
+        self.assertEqual(1, log["total"])
+        self.assertTrue(log["items"][0]["completed_manually"])
+
+    def test_manual_completion_links_the_last_real_attempt_play(self):
+        board = self.create(self.groups(warmup=[self.beatmap(1)]))
+        quest = board["groups"][0]["quests"][0]
+        attempt = self.result(quest, accuracy=80, grade="B", misses=20)
+        self.record(attempt)
+        self.assertEqual("in_progress", self.store.current(self.scope)["groups"][0]["quests"][0]["status"])
+        with self.db:
+            self.store.complete_manually(self.scope, self.store.current(self.scope), quest["id"])
+        current = self.store.current(self.scope)["groups"][0]["quests"][0]
+        self.assertEqual("completed", current["status"])
+        self.assertEqual(attempt["id"], current["completed_play_id"])
+
+    def test_manual_completion_only_applies_to_active_missions(self):
+        board = self.create(self.groups(warmup=[self.beatmap(1)]))
+        quest = board["groups"][0]["quests"][0]
+        with self.db:
+            self.assertIsNone(self.store.complete_manually(self.scope, board, "missing"))
+            self.assertIsNotNone(self.store.complete_manually(self.scope, board, quest["id"]))
+            self.assertIsNone(self.store.complete_manually(self.scope, board, quest["id"]))
+
 
 if __name__ == "__main__":
     unittest.main()

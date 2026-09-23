@@ -21,7 +21,7 @@ from tests.test_discovery_store import beatmap
 
 class SettingsValidationTests(unittest.TestCase):
     def test_schema_defaults_are_complete_valid_and_isolated(self):
-        self.assertEqual(59, len(SCHEMA))
+        self.assertEqual(61, len(SCHEMA))
         self.assertEqual(DEFAULTS, validate_settings({}))
         self.assertEqual(len(SCHEMA), len({item['key'] for item in SCHEMA}))
         changed = validate_settings({'quality_min_votes': 30})
@@ -31,6 +31,7 @@ class SettingsValidationTests(unittest.TestCase):
     def test_bad_types_unknown_keys_ranges_and_relations_are_rejected(self):
         bad = [{'reference_plays': True}, {'reference_plays': 5.5}, {'quality_min_rating': float('nan')},
                {'quality_min_rating': 11}, {'quality_min_votes': '20'}, {'quality_min_plays': 10**400}, {'discovery_enabled': 0},
+               {'favorites_enabled': 'sí'}, {'favorites_enabled': 1},
                {'unknown': 1}, {'reference_plays': 10}, {'reference_days': 2},
                {'calibration_maps': 6}, {'profile_min_maps': 10},
                {'discovery_retry_minutes': 0}, {'discovery_batches_per_pass': 0}, {'discovery_batches_per_pass': 51}, {'consolidate_increment': .8},

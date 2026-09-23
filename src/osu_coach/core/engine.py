@@ -272,8 +272,12 @@ def physical_limits(profile):
     anchors = physical_reference(profile)
     # Duration is not a proxy for skill difficulty and must not close the pool
     # around the short maps already recommended to the player.
-    return {"bpm": anchors["bpm"] + get_setting('bpm_margin') if anchors["bpm"] and get_setting('bpm_hard_limit') else None,
-            "ar": anchors["ar"] + get_setting('ar_margin') if anchors["ar"] else None}
+    limits = {"bpm": anchors["bpm"] + get_setting('bpm_margin') if anchors["bpm"] and get_setting('bpm_hard_limit') else None,
+              "ar": anchors["ar"] + get_setting('ar_margin') if anchors["ar"] else None}
+    max_bpm = get_setting('max_bpm')
+    if max_bpm:
+        limits["bpm"] = max_bpm if not limits["bpm"] else min(limits["bpm"], max_bpm)
+    return limits
 
 
 def recommend(catalog, profile, limit=3, tag_analysis=None, player_profile=None, stages=None, *, fill_online=False):
@@ -322,7 +326,8 @@ def recommend(catalog, profile, limit=3, tag_analysis=None, player_profile=None,
             personal_target = skill_target(m, player_profile, target, profile["baseline"])
             in_range = max(.1, personal_target - get_setting('star_tolerance_below')) - 1e-9 <= sr <= personal_target + get_setting('star_tolerance_above') + 1e-9
             challenge_target = personal_target + challenge_increment
-            in_challenge = (stage == 'practice' and unlocked and not m.get('benchmark') and sr > personal_target + 1e-8
+            in_challenge = (stage == 'practice' and unlocked and not m.get('benchmark') and m.get('favorite') is None
+                            and sr > personal_target + 1e-8
                             and challenge_target - get_setting('star_tolerance_below') <= sr <= challenge_target + get_setting('star_tolerance_above'))
             song = (str(m.get("artist", "")).casefold(), str(m.get("title", "")).casefold())
             if (m.get("mode", 0) != 0 or not duration_ok(m) or key in used or song in used_songs or sr <= 0
@@ -384,12 +389,12 @@ def recommend(catalog, profile, limit=3, tag_analysis=None, player_profile=None,
                 expected["focus"] = {key: focus[key] for key in ("key", "label", "action", "tag") if key in focus}
             ladder = profile.get('training_level')
             if ladder:
-                eligible = (role in {'practice', 'consolidate', 'challenge'} and not m.get('benchmark')
+                eligible = (role in {'practice', 'consolidate', 'challenge', 'favorite'} and not m.get('benchmark')
                             and adjustments.get('mode') != 'recover'
                             and number(m.get('stars')) >= ladder['stars'] - .15 - 1e-8
                             and number(m.get('object_count')) > 0 and ladder.get('next_stars') is not None)
                 result['training_progress'] = {'cycle': ladder['cycle'], 'eligible': eligible, 'stars': ladder['stars']}
-                if eligible:
+                if eligible and m.get('favorite') is None:
                     # Completion of an eligible mission must itself prove control;
                     # an accuracy-only goal cannot award a step with uncontrolled misses.
                     expected['accuracy_min'] = max(expected['accuracy_min'], get_setting('challenge_accuracy'))
